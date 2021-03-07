@@ -38,6 +38,8 @@ static int global_serv_message = -1;
 
 pthread_mutex_t cursor_lock = PTHREAD_MUTEX_INITIALIZER;
 
+int usleep(int usec);
+
 char* readline();
 
 void write_log(const char* format, ...);
@@ -276,6 +278,11 @@ int button_invite_user() {
     /* send invitation */
     wlogi("ask friend's name\n");
     char* name = accept_input("invite who to your battle: ");
+    if (strncmp(name, user_name, USERNAME_SIZE) == 0) {
+        return 0;
+    } else {
+        printf("%s\n", user_name);
+    }
     wlogi("friend name '%s'\n", name);
     client_message_t cm;
     memset(&cm, 0, sizeof(client_message_t));
@@ -841,6 +848,7 @@ void run_battle() {
             case 's': send_command(CLIENT_COMMAND_MOVE_DOWN); break;
             case 'a': send_command(CLIENT_COMMAND_MOVE_LEFT); break;
             case 'd': send_command(CLIENT_COMMAND_MOVE_RIGHT); break;
+            case ' ': send_command(CLIENT_COMMAND_HIDE); break;
             case 'k': send_command(CLIENT_COMMAND_FIRE_UP); break;
             case 'j': send_command(CLIENT_COMMAND_FIRE_DOWN); break;
             case 'h': send_command(CLIENT_COMMAND_FIRE_LEFT); break;

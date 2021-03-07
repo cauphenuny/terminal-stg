@@ -542,31 +542,19 @@ void *battle_ruler(void *args) {
     int bid = (int)(uintptr_t)args;
     log("battle ruler for battle #%d\n", bid);
     // FIXME: battle re-alloced before exiting loop 
+    for (int i = 0; i < INIT_GRASS_AMOUNT; i++) {
+        random_generate_items(bid);
+    }
     while (battles[bid].is_alloced) {
         move_bullets(bid);
         check_who_is_shooted(bid);
         check_who_is_dead(bid);
-        usleep(GLOBAL_SPEED);
-        move_bullets(bid);
-        check_who_is_shooted(bid);
-        check_who_is_dead(bid);
-        usleep(GLOBAL_SPEED);
-        move_bullets(bid);
-        check_who_is_shooted(bid);
-        check_who_is_dead(bid);
-        usleep(GLOBAL_SPEED);
-        move_bullets(bid);
-        check_who_is_shooted(bid);
-        check_who_is_dead(bid);
-        usleep(GLOBAL_SPEED);
-
-        move_bullets(bid);
         check_who_get_blood_vial(bid);
         check_who_traped_in_magma(bid);
         check_who_got_charger(bid);
         check_who_is_shooted(bid);
         check_who_is_dead(bid);
-        
+
         random_generate_items(bid);
 
         inform_all_user_battle_state(bid);
@@ -966,11 +954,15 @@ int client_command_move_right(int uid) {
     return 0;
 }
 
-int client_command_hide(int uid, int delta_x, int delta_y) {
+int client_command_hide(int uid) {
     log("user %s hide\n", sessions[uid].user_name);
     int bid = sessions[uid].bid;
-    int x = battles[bid].users[uid].pos.x + delta_x;
-    int y = battles[bid].users[uid].pos.y + delta_y;
+    int x = battles[bid].users[uid].pos.x;
+    int y = battles[bid].users[uid].pos.y;
+    if (battles[bid].users[uid].nr_energy <= HIDE_ENERGY) {
+        send_to_client(uid, SERVER_MESSAGE_ENERGY_NOT_ENOUGH);
+        return -1;
+    }
     for (int i = -1; i <= 1; i++) {
         for (int j = -1; j <= 1; j++) {
             forced_generate_item(bid, ITEM_GRASS, x + i, y + j);
@@ -1057,42 +1049,6 @@ int client_command_advanced_fire_right(int uid) {
     return client_command_advanced_fire(uid, DIR_RIGHT);
 }
 
-int client_command_hide_up(int uid) {
-    int bid = sessions[uid].bid;
-    if (battles[bid].users[uid].nr_energy <= HIDE_ENERGY) {
-        send_to_client(uid, SERVER_MESSAGE_ENERGY_NOT_ENOUGH);
-        return -1;
-    }
-	return client_command_hide(uid, 0, -1);
-}
-
-int client_command_hide_down(int uid) {
-    int bid = sessions[uid].bid;
-    if (battles[bid].users[uid].nr_energy <= HIDE_ENERGY) {
-        send_to_client(uid, SERVER_MESSAGE_ENERGY_NOT_ENOUGH);
-        return -1;
-    }
-	return client_command_hide(uid, 0, 1);
-}
-
-int client_command_hide_left(int uid) {
-    int bid = sessions[uid].bid;
-    if (battles[bid].users[uid].nr_energy <= HIDE_ENERGY) {
-        send_to_client(uid, SERVER_MESSAGE_ENERGY_NOT_ENOUGH);
-        return -1;
-    }
-	return client_command_hide(uid, -1, 0);
-}
-
-int client_command_hide_right(int uid) {
-    int bid = sessions[uid].bid;
-    if (battles[bid].users[uid].nr_energy <= HIDE_ENERGY) {
-        send_to_client(uid, SERVER_MESSAGE_ENERGY_NOT_ENOUGH);
-        return -1;
-    }
-	return client_command_hide(uid, 1, 0);
-}
-
 int client_message_fatal(int uid) {
     loge("received FATAL from user `%s`: %d \n", sessions[uid].user_name, uid);
     for (int i = 0; i < USER_CNT; i++) {
@@ -1122,14 +1078,11 @@ static int(*handler[])(int) = {
     [CLIENT_COMMAND_MOVE_DOWN] = client_command_move_down,
     [CLIENT_COMMAND_MOVE_LEFT] = client_command_move_left,
     [CLIENT_COMMAND_MOVE_RIGHT] = client_command_move_right,
+    [CLIENT_COMMAND_HIDE] = client_command_hide,
     [CLIENT_COMMAND_FIRE_UP] = client_command_fire_up,
     [CLIENT_COMMAND_FIRE_DOWN] = client_command_fire_down,
     [CLIENT_COMMAND_FIRE_LEFT] = client_command_fire_left,
     [CLIENT_COMMAND_FIRE_RIGHT] = client_command_fire_right,
-    [CLIENT_COMMAND_HIDE_UP] = client_command_hide_up,
-    [CLIENT_COMMAND_HIDE_DOWN] = client_command_hide_down,
-    [CLIENT_COMMAND_HIDE_LEFT] = client_command_hide_left,
-    [CLIENT_COMMAND_HIDE_RIGHT] = client_command_hide_right,
     [CLIENT_COMMAND_ADVANCED_FIRE_UP] = client_command_advanced_fire_up,
     [CLIENT_COMMAND_ADVANCED_FIRE_DOWN] = client_command_advanced_fire_down,
     [CLIENT_COMMAND_ADVANCED_FIRE_LEFT] = client_command_advanced_fire_left,
