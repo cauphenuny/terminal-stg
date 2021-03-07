@@ -28,8 +28,10 @@
 	|      +      |  magazine |
 	|      *      | blood vial|
   4. operations in battle
-    * w s a d can move around
-	* k j h l can fire
+    * `w s a d` can move around
+	* `k j h l` can fire
+	* `K J H L` can fire more attractively
+    * `<space>` can hide yourself
   5. quit the battle
     * note that even you die, you won't be quited from the battle
 	but your role will be changed from player into witness. If you
