@@ -543,19 +543,19 @@ void *battle_ruler(void *args) {
         move_bullets(bid);
         check_who_is_shooted(bid);
         check_who_is_dead(bid);
-        usleep(10000);
+        usleep(GLOBAL_SPEED);
         move_bullets(bid);
         check_who_is_shooted(bid);
         check_who_is_dead(bid);
-        usleep(10000);
+        usleep(GLOBAL_SPEED);
         move_bullets(bid);
         check_who_is_shooted(bid);
         check_who_is_dead(bid);
-        usleep(10000);
+        usleep(GLOBAL_SPEED);
         move_bullets(bid);
         check_who_is_shooted(bid);
         check_who_is_dead(bid);
-        usleep(10000);
+        usleep(GLOBAL_SPEED);
 
         move_bullets(bid);
         check_who_get_blood_vial(bid);
@@ -567,7 +567,7 @@ void *battle_ruler(void *args) {
         random_generate_items(bid);
 
         inform_all_user_battle_state(bid);
-        usleep(10000);
+        usleep(GLOBAL_SPEED);
     }
     return NULL;
 }
@@ -973,7 +973,7 @@ int client_command_rah(int uid) {
     int y = battles[bid].users[uid].pos.y;
     switch (battles[bid].users[uid].dir) {
         case DIR_UP: {
-            for (int i = 1; i <= 5; ++i)
+            for (int i = 1; i <= MAX_MAGMA_SIZ; ++i)
             {
                 forced_generate_item(bid, ITEM_MAGMA, x, max(y - i, 0));
 				usleep(RAH_SLEEP_BREAK);
@@ -981,7 +981,7 @@ int client_command_rah(int uid) {
             break;
         }
         case DIR_DOWN:  {
-            for (int i = 1; i <= 5; ++i)
+            for (int i = 1; i <= MAX_MAGMA_SIZ; ++i)
             {
                 forced_generate_item(bid, ITEM_MAGMA, x, min(y + i, SCR_H - 1));
 				usleep(RAH_SLEEP_BREAK);
@@ -989,7 +989,7 @@ int client_command_rah(int uid) {
             break;
         }
         case DIR_LEFT: {
-            for (int i = 1; i <= 5; ++i)
+            for (int i = 1; i <= MAX_MAGMA_SIZ; ++i)
             {
                 forced_generate_item(bid, ITEM_MAGMA, max(x - i, 0), y);
 				usleep(RAH_SLEEP_BREAK);
@@ -997,7 +997,7 @@ int client_command_rah(int uid) {
             break;
         }
         case DIR_RIGHT: {
-            for (int i = 1; i <= 5; ++i)
+            for (int i = 1; i <= MAX_MAGMA_SIZ; ++i)
             {
                 forced_generate_item(bid, ITEM_MAGMA, min(x + i, SCR_W - 1), y);
 				usleep(RAH_SLEEP_BREAK);
@@ -1047,20 +1047,39 @@ int client_command_fire_right(int uid) {
     return client_command_fire(uid, 0, 0, DIR_RIGHT);
 }
 
-int client_command_advanced_fire_down(int uid) {
-    int bid = sessions[uid].bid;
-    int dir = DIR_DOWN;
-    int cost = 0, len = -1;
-    while (cost < battles[bid].users[uid].nr_bullets) {
-        len++;
-        cost = len * len;
-    }
-    for (int i = 0; i <= len; i++) {
-        for (int j = -1; j <= i; j++) {
-            if (client_command_fire(uid, j, i - abs(j), dir) < 0) return 0;
+int client_command_advanced_fire(int uid, int dir) {
+    for (int i = 0; ; i++) {
+        for (int j = -i; j <= i; j++) {
+            switch (dir) {
+                case DIR_UP:
+                    if (client_command_fire(uid, j, -i + abs(j), dir) < 0) return 0;
+                    break;
+                case DIR_DOWN:
+                    if (client_command_fire(uid, j, i - abs(j), dir) < 0) return 0;
+                    break;
+                case DIR_LEFT:
+                    if (client_command_fire(uid, -i + abs(j), j, dir) < 0) return 0;
+                    break;
+                case DIR_RIGHT:
+                    if (client_command_fire(uid, i - abs(j), j, dir) < 0) return 0;
+                    break;
+            }
         }
     }
     return 0;
+}
+
+int client_command_advanced_fire_up(int uid) {
+    return client_command_advanced_fire(uid, DIR_UP);
+}
+int client_command_advanced_fire_down(int uid) {
+    return client_command_advanced_fire(uid, DIR_DOWN);
+}
+int client_command_advanced_fire_left(int uid) {
+    return client_command_advanced_fire(uid, DIR_LEFT);
+}
+int client_command_advanced_fire_right(int uid) {
+    return client_command_advanced_fire(uid, DIR_RIGHT);
 }
 
 int client_command_rah_up(int uid) {
@@ -1125,7 +1144,10 @@ static int(*handler[])(int) = {
     [CLIENT_COMMAND_RAH_DOWN] = client_command_rah_down,
     [CLIENT_COMMAND_RAH_LEFT] = client_command_rah_left,
     [CLIENT_COMMAND_RAH_RIGHT] = client_command_rah_right,
+    [CLIENT_COMMAND_ADVANCED_FIRE_UP] = client_command_advanced_fire_up,
     [CLIENT_COMMAND_ADVANCED_FIRE_DOWN] = client_command_advanced_fire_down,
+    [CLIENT_COMMAND_ADVANCED_FIRE_LEFT] = client_command_advanced_fire_left,
+    [CLIENT_COMMAND_ADVANCED_FIRE_RIGHT] = client_command_advanced_fire_right,
     [CLIENT_MESSAGE_FATAL] = client_message_fatal,
 };
 

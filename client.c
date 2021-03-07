@@ -846,10 +846,10 @@ void run_battle() {
             case 'j': send_command(CLIENT_COMMAND_FIRE_DOWN); break;
             case 'h': send_command(CLIENT_COMMAND_FIRE_LEFT); break;
             case 'l': send_command(CLIENT_COMMAND_FIRE_RIGHT); break;
-            case 'K': send_command(CLIENT_COMMAND_ADVANCED_FIRE_DOWN); break;
+            case 'K': send_command(CLIENT_COMMAND_ADVANCED_FIRE_UP); break;
             case 'J': send_command(CLIENT_COMMAND_ADVANCED_FIRE_DOWN); break;
-            case 'H': send_command(CLIENT_COMMAND_ADVANCED_FIRE_DOWN); break;
-            case 'L': send_command(CLIENT_COMMAND_ADVANCED_FIRE_DOWN); break;
+            case 'H': send_command(CLIENT_COMMAND_ADVANCED_FIRE_LEFT); break;
+            case 'L': send_command(CLIENT_COMMAND_ADVANCED_FIRE_RIGHT); break;
 			case '': {
 				ch = get_key();
 				ch = get_key();
