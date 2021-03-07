@@ -318,17 +318,17 @@ void forced_generate_item(int bid, int kind, int x, int y) {
 
 void random_generate_items(int bid) {
     int random_kind, item_id;
-    if (battles[bid].item_count <= 7) {
-        random_kind = 3, item_id = get_unused_item(bid);
+    if (battles[bid].item_count <= INIT_GRASS_AMOUNT) {
+        random_kind = ITEM_GRASS, item_id = get_unused_item(bid);
         if (item_id == -1) return;
     } else {
-        if (rand() % 200 > 2) return;
+        if (probability(99, 100)) return;
         if (battles[bid].num_of_other >= MAX_OTHER) return;
         item_id = get_unused_item(bid);
         if (item_id == -1) return;
         random_kind = rand() % (ITEM_END - 1) + 1;
-        if (rand() % 3 != 0 && random_kind == 2) random_kind = 1;
-        if (rand() % 2 != 0 && random_kind == 4) random_kind = 1;
+        if (random_kind == ITEM_MAGMA && probability(2, 3)) random_kind = ITEM_MAGAZINE;
+        if (random_kind == ITEM_BLOOD_VIAL && probability(1, 2)) random_kind = ITEM_MAGAZINE;
     }
     battles[bid].item_count++;
     battles[bid].items[item_id].kind = random_kind;
@@ -975,7 +975,7 @@ int client_command_rah(int uid) {
         case DIR_UP: {
             for (int i = 1; i <= 5; ++i)
             {
-                forced_generate_item(bid, 2, x, max(y - i, 0));
+                forced_generate_item(bid, ITEM_MAGMA, x, max(y - i, 0));
 				usleep(RAH_SLEEP_BREAK);
             }
             break;
@@ -983,7 +983,7 @@ int client_command_rah(int uid) {
         case DIR_DOWN:  {
             for (int i = 1; i <= 5; ++i)
             {
-                forced_generate_item(bid, 2, x, min(y + i, SCR_H - 1));
+                forced_generate_item(bid, ITEM_MAGMA, x, min(y + i, SCR_H - 1));
 				usleep(RAH_SLEEP_BREAK);
             }
             break;
@@ -991,7 +991,7 @@ int client_command_rah(int uid) {
         case DIR_LEFT: {
             for (int i = 1; i <= 5; ++i)
             {
-                forced_generate_item(bid, 2, max(x - i, 0), y);
+                forced_generate_item(bid, ITEM_MAGMA, max(x - i, 0), y);
 				usleep(RAH_SLEEP_BREAK);
             }
             break;
@@ -999,7 +999,7 @@ int client_command_rah(int uid) {
         case DIR_RIGHT: {
             for (int i = 1; i <= 5; ++i)
             {
-                forced_generate_item(bid, 2, min(x + i, SCR_W - 1), y);
+                forced_generate_item(bid, ITEM_MAGMA, min(x + i, SCR_W - 1), y);
 				usleep(RAH_SLEEP_BREAK);
             }
             break;

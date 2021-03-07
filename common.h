@@ -149,6 +149,7 @@
 #define MAX_ITEM (USER_CNT * (MAX_BULLETS) + MAX_OTHER)
 
 #define RAH_SLEEP_BREAK 200000
+#define INIT_GRASS_AMOUNT 7
 
 enum {
     CLIENT_COMMAND_USER_QUIT,
@@ -363,15 +364,6 @@ static char* signal_name_s[] = {
 #define CLRLINE              "\r\e[K"
 #define NONE                 "\e[0m"
 
-#define ASCII_UP     0xE048
-#define ASCII_DOWN   0xE050
-#define ASCII_LEFT   0xE04B
-#define ASCII_RIGHT  0xE04D
-#define ASCII_ESC    0x001B
-#define ASCII_TAB    0x0009
-#define ASCII_ENTER  0x000D
-#define ASCII_BACK   0x0008
-
 int get_key() {
     return fgetc(stdin);
 }
@@ -383,4 +375,9 @@ int max(int a, int b) {
 int min(int a, int b) {
     return a < b ? a : b;
 }
+
+bool probability(int x, int y) {
+    return (rand() % y) <= (x - 1);
+}
+
 #endif
