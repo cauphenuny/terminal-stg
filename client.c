@@ -1422,7 +1422,7 @@ void terminate(int signum) {
 }
 
 int main(int argc, char* argv[]) {
-    system("rm ./log.txt");
+    system("bash -c \"if [ -f log.txt ]; then rm log.txt; fi;\"");
     if (argc >= 2) {
         server_addr = (char*)malloc(256);
         strcpy(server_addr, argv[1]);
