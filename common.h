@@ -177,6 +177,10 @@ enum {
 	CLIENT_COMMAND_RAH_DOWN,
 	CLIENT_COMMAND_RAH_LEFT,
 	CLIENT_COMMAND_RAH_RIGHT,
+    CLIENT_COMMAND_ADVANCED_FIRE_UP,
+    CLIENT_COMMAND_ADVANCED_FIRE_DOWN,
+    CLIENT_COMMAND_ADVANCED_FIRE_LEFT,
+    CLIENT_COMMAND_ADVANCED_FIRE_RIGHT,
     CLIENT_MESSAGE_FATAL,
     CLIENT_COMMAND_END,
 };
@@ -378,6 +382,10 @@ int min(int a, int b) {
 
 bool probability(int x, int y) {
     return (rand() % y) <= (x - 1);
+}
+
+int abs(int a) {
+    return a < 0 ? -a : a;
 }
 
 #endif
