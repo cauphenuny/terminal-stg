@@ -1,4 +1,3 @@
-
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -944,22 +943,21 @@ int client_command_move_right(int uid) {
     }
     return 0;
 }
-
-int client_command_fire(int uid) {
-    log("user %s fire up\n", sessions[uid].user_name);
+int client_command_fire(int uid, int delta_x, int delta_y, int dir) {
+    log("user %s fire %d\n", sessions[uid].user_name, dir);
     int bid = sessions[uid].bid;
     int item_id = get_unused_item(bid);
     log("alloc item %d for bullet\n", item_id);
-    if (item_id == -1) return 0;
+    if (item_id == -1) return 1;
 
     if (battles[bid].users[uid].nr_bullets <= 0) {
         send_to_client(uid, SERVER_MESSAGE_YOUR_MAGAZINE_IS_EMPTY);
-        return 0;
+        return -1;
     }
-
-    int x = battles[bid].users[uid].pos.x;
-    int y = battles[bid].users[uid].pos.y;
-    int dir = battles[bid].users[uid].dir;
+    int x = battles[bid].users[uid].pos.x + delta_x;
+    int y = battles[bid].users[uid].pos.y + delta_y;
+    if (x < 0 || x >= BATTLE_W) return 1;
+    if (y < 0 || y >= BATTLE_H) return 1;
     log("bullet, %s@(%d, %d), direct to %d\n",
             sessions[uid].user_name, x, y, dir);
     battles[bid].items[item_id].kind = ITEM_BULLET;
@@ -967,115 +965,58 @@ int client_command_fire(int uid) {
     battles[bid].items[item_id].owner = uid;
     battles[bid].items[item_id].pos.x = x;
     battles[bid].items[item_id].pos.y = y;
-
     battles[bid].users[uid].nr_bullets --;
-
     return 0;
 }
 
 int client_command_fire_up(int uid) {
-    log("user %s fire up\n", sessions[uid].user_name);
-    int bid = sessions[uid].bid;
-    int item_id = get_unused_item(bid);
-    log("alloc item %d for bullet\n", item_id);
-    if (item_id == -1) return 0;
-
-    if (battles[bid].users[uid].nr_bullets <= 0) {
-        send_to_client(uid, SERVER_MESSAGE_YOUR_MAGAZINE_IS_EMPTY);
-        return 0;
-    }
-
-    int x = battles[bid].users[uid].pos.x;
-    int y = battles[bid].users[uid].pos.y;
-    log("bullet, %s@(%d, %d), direct to %d\n",
-            sessions[uid].user_name, x, y, DIR_UP);
-    battles[bid].items[item_id].kind = ITEM_BULLET;
-    battles[bid].items[item_id].dir = DIR_UP;
-    battles[bid].items[item_id].owner = uid;
-    battles[bid].items[item_id].pos.x = x;
-    battles[bid].items[item_id].pos.y = y;
-
-    battles[bid].users[uid].nr_bullets --;
-
-    return 0;
+    return client_command_fire(uid, 0, 0, DIR_UP);
 }
 int client_command_fire_down(int uid) {
-    log("user %s fire\n", sessions[uid].user_name);
-    int bid = sessions[uid].bid;
-    int item_id = get_unused_item(bid);
-    log("alloc item %d for bullet\n", item_id);
-    if (item_id == -1) return 0;
-
-    if (battles[bid].users[uid].nr_bullets <= 0) {
-        send_to_client(uid, SERVER_MESSAGE_YOUR_MAGAZINE_IS_EMPTY);
-        return 0;
-    }
-
-    int x = battles[bid].users[uid].pos.x;
-    int y = battles[bid].users[uid].pos.y;
-    log("bullet, %s@(%d, %d), direct to %d\n",
-            sessions[uid].user_name, x, y, DIR_DOWN);
-    battles[bid].items[item_id].kind = ITEM_BULLET;
-    battles[bid].items[item_id].dir = DIR_DOWN;
-    battles[bid].items[item_id].owner = uid;
-    battles[bid].items[item_id].pos.x = x;
-    battles[bid].items[item_id].pos.y = y;
-
-    battles[bid].users[uid].nr_bullets --;
-
-    return 0;
+    return client_command_fire(uid, 0, 0, DIR_DOWN);
 }
 int client_command_fire_left(int uid) {
-    log("user %s fire\n", sessions[uid].user_name);
-    int bid = sessions[uid].bid;
-    int item_id = get_unused_item(bid);
-    log("alloc item %d for bullet\n", item_id);
-    if (item_id == -1) return 0;
-
-    if (battles[bid].users[uid].nr_bullets <= 0) {
-        send_to_client(uid, SERVER_MESSAGE_YOUR_MAGAZINE_IS_EMPTY);
-        return 0;
-    }
-
-    int x = battles[bid].users[uid].pos.x;
-    int y = battles[bid].users[uid].pos.y;
-    log("bullet, %s@(%d, %d), direct to %d\n",
-            sessions[uid].user_name, x, y, DIR_LEFT);
-    battles[bid].items[item_id].kind = ITEM_BULLET;
-    battles[bid].items[item_id].dir = DIR_LEFT;
-    battles[bid].items[item_id].owner = uid;
-    battles[bid].items[item_id].pos.x = x;
-    battles[bid].items[item_id].pos.y = y;
-
-    battles[bid].users[uid].nr_bullets --;
-
-    return 0;
+    return client_command_fire(uid, 0, 0, DIR_LEFT);
 }
 int client_command_fire_right(int uid) {
-    log("user %s fire\n", sessions[uid].user_name);
-    int bid = sessions[uid].bid;
-    int item_id = get_unused_item(bid);
-    log("alloc item %d for bullet\n", item_id);
-    if (item_id == -1) return 0;
+    return client_command_fire(uid, 0, 0, DIR_RIGHT);
+}
 
-    if (battles[bid].users[uid].nr_bullets <= 0) {
-        send_to_client(uid, SERVER_MESSAGE_YOUR_MAGAZINE_IS_EMPTY);
-        return 0;
+int client_command_fire_aoe(int uid, int dir) {
+    int limit = battles[sessions[uid].bid].users[uid].nr_bullets / 2;
+    for (int i = 0; limit; i++) {
+        for (int j = -i; j <= i && limit; j++) {
+            switch (dir) {
+                case DIR_UP:
+                    if (client_command_fire(uid, j, -i + abs(j), dir) < 0) return 0;
+                    break;
+                case DIR_DOWN:
+                    if (client_command_fire(uid, j, i - abs(j), dir) < 0) return 0;
+                    break;
+                case DIR_LEFT:
+                    if (client_command_fire(uid, -i + abs(j), j, dir) < 0) return 0;
+                    break;
+                case DIR_RIGHT:
+                    if (client_command_fire(uid, i - abs(j), j, dir) < 0) return 0;
+                    break;
+            }
+            limit--;
+        }
     }
-
-    int x = battles[bid].users[uid].pos.x;
-    int y = battles[bid].users[uid].pos.y;
-    log("bullet, %s@(%d, %d), direct to %d\n",
-            sessions[uid].user_name, x, y, DIR_RIGHT);
-    battles[bid].items[item_id].kind = ITEM_BULLET;
-    battles[bid].items[item_id].dir = DIR_RIGHT;
-    battles[bid].items[item_id].owner = uid;
-    battles[bid].items[item_id].pos.x = x;
-    battles[bid].items[item_id].pos.y = y;
-
-    battles[bid].users[uid].nr_bullets --;
-
     return 0;
+}
+
+int client_command_fire_aoe_up(int uid) {
+    return client_command_fire_aoe(uid, DIR_UP);
+}
+int client_command_fire_aoe_down(int uid) {
+    return client_command_fire_aoe(uid, DIR_DOWN);
+}
+int client_command_fire_aoe_left(int uid) {
+    return client_command_fire_aoe(uid, DIR_LEFT);
+}
+int client_command_fire_aoe_right(int uid) {
+    return client_command_fire_aoe(uid, DIR_RIGHT);
 }
 
 int client_message_fatal(int uid) {
@@ -1091,6 +1032,7 @@ int client_message_fatal(int uid) {
 }
 
 static int(*handler[])(int) = {
+    [CLIENT_MESSAGE_FATAL] = client_message_fatal,
     [CLIENT_COMMAND_USER_QUIT] = client_command_quit,
     [CLIENT_COMMAND_USER_REGISTER] = client_command_user_register,
     [CLIENT_COMMAND_USER_LOGIN] = client_command_user_login,
@@ -1107,12 +1049,14 @@ static int(*handler[])(int) = {
     [CLIENT_COMMAND_MOVE_DOWN] = client_command_move_down,
     [CLIENT_COMMAND_MOVE_LEFT] = client_command_move_left,
     [CLIENT_COMMAND_MOVE_RIGHT] = client_command_move_right,
-    [CLIENT_COMMAND_FIRE] = client_command_fire,
     [CLIENT_COMMAND_FIRE_UP] = client_command_fire_up,
     [CLIENT_COMMAND_FIRE_DOWN] = client_command_fire_down,
     [CLIENT_COMMAND_FIRE_LEFT] = client_command_fire_left,
     [CLIENT_COMMAND_FIRE_RIGHT] = client_command_fire_right,
-    [CLIENT_MESSAGE_FATAL] = client_message_fatal,
+    [CLIENT_COMMAND_FIRE_AOE_UP] = client_command_fire_aoe_up,
+    [CLIENT_COMMAND_FIRE_AOE_DOWN] = client_command_fire_aoe_down,
+    [CLIENT_COMMAND_FIRE_AOE_LEFT] = client_command_fire_aoe_left,
+    [CLIENT_COMMAND_FIRE_AOE_RIGHT] = client_command_fire_aoe_right,
 };
 
 void wrap_recv(int conn, client_message_t *pcm) {

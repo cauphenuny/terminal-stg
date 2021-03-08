@@ -1,4 +1,3 @@
-
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <pthread.h>
@@ -68,7 +67,7 @@ struct catalog_t {
     const char* title;
     char records[USER_CNT][USERNAME_SIZE];
 } friend_list = {
-    {34, 1},
+    {48, 1},
     "online friends",
 };
 
@@ -318,37 +317,37 @@ struct button_t {
     int (*button_func)();
 } buttons[] = {
     [buttonLogin] = {
-        {24, 3},
+        {34, 3},
         " login  ",
         button_login,
     },
     [buttonRegister] = {
-        {24, 7},
+        {34, 9},
         "register",
         button_register,
     },
     [buttonQuitGame] = {
-        {24, 11},
+        {34, 15},
         "  quit  ",
         button_quit_game,
     },
     [buttonLaunchBattle] = {
-        {7, 1},
+        {10, 1},
         "launch battle",
         button_launch_battle,
     },
     [buttonInviteUser] = {
-        {7, 5},
+        {10, 6},
         " invite user ",
         button_invite_user,
     },
     [buttonJoinBattle] = {
-        {7, 9},
+        {10, 11},
         "accept battle",
         button_join_battle,
     },
     [buttonLogout] = {
-        {7, 13},
+        {10, 16},
         "    logout   ",
         button_logout,
     },
@@ -536,7 +535,7 @@ void write_log(const char* format, ...) {
 
 void display_user_state() {
     assert(user_state <= sizeof(user_state_s) / sizeof(user_state_s[0]));
-    bottom_bar_output(-1, "name: %s  HP: %d  bullets: %d  state: %s", user_name, user_hp, user_bullets, user_state_s[user_state]);
+    bottom_bar_output(-1, "name: %s  HP: %d  energy: %d  state: %s", user_name, user_hp, user_bullets, user_state_s[user_state]);
 }
 
 void server_say(const char* message) {
@@ -842,11 +841,14 @@ void run_battle() {
             case 's': send_command(CLIENT_COMMAND_MOVE_DOWN); break;
             case 'a': send_command(CLIENT_COMMAND_MOVE_LEFT); break;
             case 'd': send_command(CLIENT_COMMAND_MOVE_RIGHT); break;
-            case ' ': send_command(CLIENT_COMMAND_FIRE); break;
             case 'k': send_command(CLIENT_COMMAND_FIRE_UP); break;
             case 'j': send_command(CLIENT_COMMAND_FIRE_DOWN); break;
             case 'h': send_command(CLIENT_COMMAND_FIRE_LEFT); break;
             case 'l': send_command(CLIENT_COMMAND_FIRE_RIGHT); break;
+            case 'K': send_command(CLIENT_COMMAND_FIRE_AOE_UP); break;
+            case 'J': send_command(CLIENT_COMMAND_FIRE_AOE_DOWN); break;
+            case 'H': send_command(CLIENT_COMMAND_FIRE_AOE_LEFT); break;
+            case 'L': send_command(CLIENT_COMMAND_FIRE_AOE_RIGHT); break;
         }
     }
 
@@ -1330,7 +1332,7 @@ int server_message_you_got_magazine(server_message_t* psm) {
 
 int server_message_your_magazine_is_empty(server_message_t* psm) {
     wlog("call message handler %s\n", __func__);
-    server_say("your charger is empty");
+    server_say("your energy is not enough");
     return 0;
 }
 
