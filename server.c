@@ -1027,7 +1027,7 @@ int client_message_fatal(int uid) {
             log("send FATAL to user `%s`: %d\n", sessions[i].user_name, i);
         }
     }
-    terminate_process(2);
+    terminate_process(SIGINT);
     return 0;
 }
 
@@ -1179,8 +1179,8 @@ void terminate_process(int recved_signal) {
     for (int i = 0; i < USER_CNT; i++) {
         if (sessions[i].conn >= 0) {
             send_to_client(i, SERVER_MESSAGE_QUIT);
-            close(sessions[i].conn);
             log("close conn:%d\n", sessions[i].conn);
+            close(sessions[i].conn);
         }
     }
 
