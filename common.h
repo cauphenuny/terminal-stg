@@ -1,7 +1,7 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#define VERSION "v1.6.0"
+#define VERSION "v1.6.1"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -146,7 +146,9 @@
 #define MAX_LIFE 30
 #define LIFE_PER_VIAL 6
 
-#define MAGMA_INIT_TIMES 8
+#define INIT_GRASS 5
+
+#define MAGMA_INIT_TIMES 3
 #define MAX_OTHER 128
 
 #define MAX_ITEM (USER_CNT * (MAX_BULLETS) + MAX_OTHER)
@@ -362,6 +364,5 @@ static char* signal_name_s[] = {
 #define CLEAR                "\e[2J"
 #define CLRLINE              "\r\e[K"
 #define NONE                 "\e[0m"
-
 
 #endif
