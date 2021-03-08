@@ -131,6 +131,7 @@
 #define BATTLE_W 40
 #define BATTLE_H 12
 
+#define IPADDR_SIZE 24
 #define USERNAME_SIZE  12
 #define MSG_SIZE 96
 #define USER_CNT   15
