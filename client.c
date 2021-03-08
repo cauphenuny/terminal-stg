@@ -465,17 +465,17 @@ char* readline() {
         fflush(stdout);
     while ((ch = get_key()) != '\n') {
         switch (ch) {
-            case '\033': {
-                ch = get_key();
-                ch = get_key();
-                assert('A' <= ch && ch <= 'D');
-                break;
-            }
-            case 0x7f: {
-                if (line_ptr == 0) break;
-                READLINE_BACKSPACE;
-                break;
-            }
+            //case '\033': {
+            //    ch = get_key();
+            //    ch = get_key();
+            //    assert('A' <= ch && ch <= 'D');
+            //    break;
+            //}
+            //case 0x7f: {
+            //    if (line_ptr == 0) break;
+            //    READLINE_BACKSPACE;
+            //    break;
+            //}
             default: {
                 if (line_ptr < sizeof(line) - 1
                     && 0x20 <= ch && ch < 0x80) {
