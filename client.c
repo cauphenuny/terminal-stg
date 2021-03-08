@@ -278,11 +278,6 @@ int button_invite_user() {
     /* send invitation */
     wlogi("ask friend's name\n");
     char* name = accept_input("invite who to your battle: ");
-    if (strncmp(name, user_name, USERNAME_SIZE) == 0) {
-        return 0;
-    } else {
-        printf("%s\n", user_name);
-    }
     wlogi("friend name '%s'\n", name);
     client_message_t cm;
     memset(&cm, 0, sizeof(client_message_t));
