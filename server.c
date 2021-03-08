@@ -1048,6 +1048,7 @@ int client_command_fire_right(int uid) {
 }
 
 int client_command_advanced_fire(int uid, int dir) {
+    log("user @%d advanced fire.\n", uid);
     int bid = sessions[uid].bid;
     int res = (battles[bid].users[uid].nr_bullets) / 2;
     for (int i = 0; res; i++) {
@@ -1150,7 +1151,10 @@ static int(*handler[])(int) = {
     [CLIENT_COMMAND_RAH_DOWN] = client_command_rah_down,
     [CLIENT_COMMAND_RAH_LEFT] = client_command_rah_left,
     [CLIENT_COMMAND_RAH_RIGHT] = client_command_rah_right,
+    [CLIENT_COMMAND_ADVANCED_FIRE_UP] = client_command_advanced_fire_up,
     [CLIENT_COMMAND_ADVANCED_FIRE_DOWN] = client_command_advanced_fire_down,
+    [CLIENT_COMMAND_ADVANCED_FIRE_LEFT] = client_command_advanced_fire_left,
+    [CLIENT_COMMAND_ADVANCED_FIRE_RIGHT] = client_command_advanced_fire_right,
     [CLIENT_MESSAGE_FATAL] = client_message_fatal,
 };
 
@@ -1308,6 +1312,9 @@ int main(int argc, char *argv[]) {
     pthread_t thread;
 
     if (signal(SIGINT, terminate_entrance) == SIG_ERR) {
+        eprintf("An error occurred while setting a signal handler.\n");
+    }
+    if (signal(SIGSEGV, terminate_entrance) == SIG_ERR) {
         eprintf("An error occurred while setting a signal handler.\n");
     }
 

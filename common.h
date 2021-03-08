@@ -1,7 +1,7 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#define VERSION "v1.5.4"
+#define VERSION "v1.5.5"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -123,8 +123,8 @@
  *     ws.ws_row;
  */
 
-#define SCR_W 60
-#define SCR_H 18
+#define SCR_W 80
+#define SCR_H 23
 
 #define BATTLE_W (SCR_W)
 #define BATTLE_H (SCR_H - 2)
@@ -135,13 +135,13 @@
 
 #define PASSWORD_SIZE USERNAME_SIZE
 
-#define INIT_BULLETS 12
-#define MAX_BULLETS 24
-#define BULLETS_PER_MAGAZINE 5
+#define INIT_BULLETS 20
+#define MAX_BULLETS 150
+#define BULLETS_PER_MAGAZINE 10
 
-#define INIT_LIFE 5
-#define MAX_LIFE 15
-#define LIFE_PER_VIAL 3
+#define INIT_LIFE 10
+#define MAX_LIFE 30
+#define LIFE_PER_VIAL 5
 
 #define MAGMA_INIT_TIMES 8
 #define MAX_OTHER 15
