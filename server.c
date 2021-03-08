@@ -111,9 +111,9 @@ void load_user_list() {
         registered_user_list[i].password[strlen(registered_user_list[i].password) - 1] = 0;
     }
     #undef LOAD_FAIL
-    for (int i = 0; i < user_list_size; i++) {
-        log("loaded user %s\n", registered_user_list[i].user_name);
-    }
+    //for (int i = 0; i < user_list_size; i++) {
+    //    log("loaded user %s\n", registered_user_list[i].user_name);
+    //}
     log("loaded %d users from " REGISTERED_USER_FILE ".\n", user_list_size);
     fclose(userlist);
 }

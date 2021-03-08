@@ -32,4 +32,4 @@ make client quit when server quit.
 
 -------------
 v1.1.0
-fix Ctrl-C bug.
+fix Ctrl-C bug, add server can save userlist.
