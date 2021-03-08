@@ -1,7 +1,7 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#define VERSION "v1.6.1"
+#define VERSION "v2.0.0 <beta>"
 
 #include <stdio.h>
 #include <stdlib.h>

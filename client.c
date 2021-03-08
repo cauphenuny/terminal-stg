@@ -62,6 +62,12 @@ void flip_screen();
 
 void show_cursor();
 
+void set_cursor(uint32_t x, uint32_t y);
+
+int main_ui();
+
+int private_ui();
+
 struct catalog_t {
     pos_t pos;
     const char* title;
@@ -178,13 +184,17 @@ void send_command(int command) {
 
 /* all buttons */
 enum {
-    buttonLogin = 0,
-    buttonRegister = 1,
-    buttonQuitGame = 2,
-    buttonLaunchBattle = 3,
-    buttonInviteUser = 4,
-    buttonJoinBattle = 5,
-    buttonLogout = 6,
+    buttonLogin,
+    buttonRegister,
+    buttonQuitGame,
+    buttonPrivate,
+    buttonFFA,
+    buttonRanklist,
+    buttonLogout,
+    buttonLaunchBattle,
+    buttonInviteUser,
+    buttonJoinBattle,
+    buttonQuitPrivate,
 };
 
 int button_login() {
@@ -301,6 +311,11 @@ int button_join_battle() {
     return 0;
 }
 
+int button_quit_private() {
+    wlog("call button handler %s\n", __func__);
+    return -1;
+}
+
 int button_logout() {
     wlog("call button handler %s\n", __func__);
     user_name = "<unknown>";
@@ -310,6 +325,31 @@ int button_logout() {
     return -1;
 }
 
+int button_ranklist() {
+    bottom_bar_output(0, "logout");
+    wlog("call button handler %s\n", __func__);
+    flip_screen();
+    set_cursor(0, 0);
+    puts("咕咕咕");
+    fgetc(stdin);
+    return 0;
+    return -1;
+}
+
+int button_private_battle() {
+    wlog("call button handler %s\n", __func__);
+    return private_ui();
+}
+
+int button_ffa() {
+    wlog("call button handler %s\n", __func__);
+    flip_screen();
+    set_cursor(0, 0);
+    puts("咕咕咕");
+    fgetc(stdin);
+    return 0;
+}
+
 /* button position and handler */
 struct button_t {
     pos_t pos;
@@ -317,19 +357,39 @@ struct button_t {
     int (*button_func)();
 } buttons[] = {
     [buttonLogin] = {
-        {34, 3},
+        {24, 3},
         " login  ",
         button_login,
     },
     [buttonRegister] = {
-        {34, 9},
+        {24, 9},
         "register",
         button_register,
     },
     [buttonQuitGame] = {
-        {34, 15},
+        {24, 15},
         "  quit  ",
         button_quit_game,
+    },
+    [buttonPrivate] = {
+        {10, 1},
+        "private room",
+        button_private_battle,
+    },
+    [buttonFFA] = {
+        {10, 6},
+        "free for all",
+        button_ffa,
+    },
+    [buttonRanklist] = {
+        {10, 11},
+        "  ranklist  ",
+        button_ranklist,
+    },
+    [buttonLogout] = {
+        {10, 16},
+        "   logout   ",
+        button_logout,
     },
     [buttonLaunchBattle] = {
         {10, 1},
@@ -346,13 +406,11 @@ struct button_t {
         "accept battle",
         button_join_battle,
     },
-    [buttonLogout] = {
+    [buttonQuitPrivate] = {
         {10, 16},
-        "    logout   ",
-        button_logout,
+        "  back home  ",
+        button_quit_private,
     },
-
-    // [buttonQuitBattle]   = {{7, 11},   "quit battle"},
 };
 
 void wrap_get_term_attr(struct termio* ptbuf) {
@@ -912,20 +970,54 @@ int switch_selected_button_respond_to_key(int st, int ed) {
     return sel;
 }
 
-void draw_button_in_main_ui() {
+void draw_button_in_private_ui() {
     draw_button(buttonLaunchBattle);
     draw_button(buttonInviteUser);
     draw_button(buttonJoinBattle);
+    draw_button(buttonQuitPrivate);
+    draw_catalog(&friend_list);
+}
+
+int private_ui() {
+    flip_screen();
+    while (1) {
+        draw_button_in_private_ui();
+        display_user_state();
+        int sel = switch_selected_button_respond_to_key(buttonLaunchBattle, buttonQuitPrivate + 1);
+        wlog("user select %d\n", sel);
+
+        int ret_code = buttons[sel].button_func();
+        wlog("button handler return %d\n", ret_code);
+
+        if (ret_code < 0 || user_state == USER_STATE_NOT_LOGIN) {
+            flip_screen();
+            wlog("quit private ui with user_state:%d\n", user_state);
+            break;
+        }
+
+        if (user_state == USER_STATE_BATTLE) {
+            wlog("enter battle mode\n");
+            run_battle();
+        }
+    }
+    return 0;
+}
+
+void draw_button_in_main_ui() {
+    draw_button(buttonPrivate);
+    draw_button(buttonFFA);
+    draw_button(buttonRanklist);
     draw_button(buttonLogout);
     draw_catalog(&friend_list);
 }
 
-void main_ui() {
+int main_ui() {
     flip_screen();
     while (1) {
+        flip_screen();
         draw_button_in_main_ui();
         display_user_state();
-        int sel = switch_selected_button_respond_to_key(3, 7);
+        int sel = switch_selected_button_respond_to_key(buttonPrivate, buttonLogout + 1);
         wlog("user select %d\n", sel);
 
         int ret_code = buttons[sel].button_func();
@@ -936,12 +1028,8 @@ void main_ui() {
             wlog("quit main ui with user_state:%d\n", user_state);
             break;
         }
-
-        if (user_state == USER_STATE_BATTLE) {
-            wlog("enter battle mode\n");
-            run_battle();
-        }
     }
+    return 0;
 }
 
 void draw_button_in_start_ui() {
@@ -956,7 +1044,7 @@ void start_ui() {
     while (1) {
         draw_button_in_start_ui();
         display_user_state();
-        int sel = switch_selected_button_respond_to_key(0, 3);
+        int sel = switch_selected_button_respond_to_key(buttonLogin, buttonQuitGame);
         wlog("user select %d@%s\n", sel, buttons[sel].s);
         buttons[sel].button_func();
 
