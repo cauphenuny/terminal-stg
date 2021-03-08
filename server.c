@@ -1,3 +1,4 @@
+
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -543,19 +544,19 @@ void *battle_ruler(void *args) {
         move_bullets(bid);
         check_who_is_shooted(bid);
         check_who_is_dead(bid);
-        usleep(10000);
+        usleep(GLOBAL_SPEED);
         move_bullets(bid);
         check_who_is_shooted(bid);
         check_who_is_dead(bid);
-        usleep(10000);
+        usleep(GLOBAL_SPEED);
         move_bullets(bid);
         check_who_is_shooted(bid);
         check_who_is_dead(bid);
-        usleep(10000);
+        usleep(GLOBAL_SPEED);
         move_bullets(bid);
         check_who_is_shooted(bid);
         check_who_is_dead(bid);
-        usleep(10000);
+        usleep(GLOBAL_SPEED);
 
         move_bullets(bid);
         check_who_get_blood_vial(bid);
@@ -567,7 +568,7 @@ void *battle_ruler(void *args) {
         random_generate_items(bid);
 
         inform_all_user_battle_state(bid);
-        usleep(10000);
+        usleep(GLOBAL_SPEED);
     }
     return NULL;
 }
@@ -973,7 +974,7 @@ int client_command_rah(int uid) {
     int y = battles[bid].users[uid].pos.y;
     switch (battles[bid].users[uid].dir) {
         case DIR_UP: {
-            for (int i = 1; i <= RAH_LIMIT; ++i)
+            for (int i = 1; i <= MAX_MAGMA_SIZ; ++i)
             {
                 forced_generate_item(bid, ITEM_MAGMA, x, max(y - i, 0));
 				usleep(RAH_SLEEP_BREAK);
@@ -981,7 +982,7 @@ int client_command_rah(int uid) {
             break;
         }
         case DIR_DOWN:  {
-            for (int i = 1; i <= RAH_LIMIT; ++i)
+            for (int i = 1; i <= MAX_MAGMA_SIZ; ++i)
             {
                 forced_generate_item(bid, ITEM_MAGMA, x, min(y + i, SCR_H - 1));
 				usleep(RAH_SLEEP_BREAK);
@@ -989,7 +990,7 @@ int client_command_rah(int uid) {
             break;
         }
         case DIR_LEFT: {
-            for (int i = 1; i <= RAH_LIMIT; ++i)
+            for (int i = 1; i <= MAX_MAGMA_SIZ; ++i)
             {
                 forced_generate_item(bid, ITEM_MAGMA, max(x - i, 0), y);
 				usleep(RAH_SLEEP_BREAK);
@@ -997,7 +998,7 @@ int client_command_rah(int uid) {
             break;
         }
         case DIR_RIGHT: {
-            for (int i = 1; i <= RAH_LIMIT; ++i)
+            for (int i = 1; i <= MAX_MAGMA_SIZ; ++i)
             {
                 forced_generate_item(bid, ITEM_MAGMA, min(x + i, SCR_W - 1), y);
 				usleep(RAH_SLEEP_BREAK);
@@ -1048,28 +1049,21 @@ int client_command_fire_right(int uid) {
 }
 
 int client_command_advanced_fire(int uid, int dir) {
-    log("user @%d advanced fire.\n", uid);
-    int bid = sessions[uid].bid;
-    int res = (battles[bid].users[uid].nr_bullets) / 2;
-    for (int i = 0; res; i++) {
-        for (int j = -i; j <= i && res; j++) {
+    for (int i = 0; ; i++) {
+        for (int j = -i; j <= i; j++) {
             switch (dir) {
-                case DIR_DOWN: {
-                    if (client_command_fire(uid, j, i - abs(j), dir) < 0) return 0;
-                    break;
-                }
-                case DIR_UP: {
+                case DIR_UP:
                     if (client_command_fire(uid, j, -i + abs(j), dir) < 0) return 0;
                     break;
-                }
-                case DIR_LEFT: {
+                case DIR_DOWN:
+                    if (client_command_fire(uid, j, i - abs(j), dir) < 0) return 0;
+                    break;
+                case DIR_LEFT:
                     if (client_command_fire(uid, -i + abs(j), j, dir) < 0) return 0;
                     break;
-                }
-                case DIR_RIGHT: {
+                case DIR_RIGHT:
                     if (client_command_fire(uid, i - abs(j), j, dir) < 0) return 0;
                     break;
-                }
             }
         }
     }
@@ -1312,9 +1306,6 @@ int main(int argc, char *argv[]) {
     pthread_t thread;
 
     if (signal(SIGINT, terminate_entrance) == SIG_ERR) {
-        eprintf("An error occurred while setting a signal handler.\n");
-    }
-    if (signal(SIGSEGV, terminate_entrance) == SIG_ERR) {
         eprintf("An error occurred while setting a signal handler.\n");
     }
 
