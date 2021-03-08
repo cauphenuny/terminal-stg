@@ -2,7 +2,7 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#define VERSION "v1.5.3"
+#define VERSION "v1.4.2"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -149,11 +149,6 @@
 
 #define MAX_ITEM (USER_CNT * (MAX_BULLETS) + MAX_OTHER)
 
-#define RAH_SLEEP_BREAK 200000
-#define INIT_GRASS_AMOUNT 7
-#define GLOBAL_SPEED 10000
-#define MAX_MAGMA_SIZ 3
-
 enum {
     CLIENT_COMMAND_USER_QUIT,
     CLIENT_COMMAND_USER_REGISTER,
@@ -176,14 +171,6 @@ enum {
     CLIENT_COMMAND_FIRE_DOWN,
     CLIENT_COMMAND_FIRE_LEFT,
     CLIENT_COMMAND_FIRE_RIGHT,
-	CLIENT_COMMAND_RAH_UP,
-	CLIENT_COMMAND_RAH_DOWN,
-	CLIENT_COMMAND_RAH_LEFT,
-	CLIENT_COMMAND_RAH_RIGHT,
-    CLIENT_COMMAND_ADVANCED_FIRE_UP,
-    CLIENT_COMMAND_ADVANCED_FIRE_DOWN,
-    CLIENT_COMMAND_ADVANCED_FIRE_LEFT,
-    CLIENT_COMMAND_ADVANCED_FIRE_RIGHT,
     CLIENT_MESSAGE_FATAL,
     CLIENT_COMMAND_END,
 };
@@ -371,24 +358,5 @@ static char* signal_name_s[] = {
 #define CLRLINE              "\r\e[K"
 #define NONE                 "\e[0m"
 
-int get_key() {
-    return fgetc(stdin);
-}
-
-int max(int a, int b) {
-    return a > b ? a : b;
-}
-
-int min(int a, int b) {
-    return a < b ? a : b;
-}
-
-bool probability(int x, int y) {
-    return (rand() % y) <= (x - 1);
-}
-
-int abs(int a) {
-    return a < 0 ? -a : a;
-}
 
 #endif

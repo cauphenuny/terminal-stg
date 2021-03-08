@@ -298,38 +298,19 @@ int get_unused_item(int bid) {
     return ret_item_id;
 }
 
-void forced_generate_item(int bid, int kind, int x, int y) {
-    int item_kind, item_id;
-    if (battles[bid].num_of_other >= MAX_OTHER) return;
-    item_id = get_unused_item(bid);
-    if (item_id == -1) return;
-    item_kind = kind;
-    battles[bid].item_count++;
-    battles[bid].items[item_id].kind = item_kind;
-    battles[bid].items[item_id].pos.x = x;
-    battles[bid].items[item_id].pos.y = y;
-    log("new item: #%dk%d(%d,%d)\n", item_id,
-            battles[bid].items[item_id].kind,
-            battles[bid].items[item_id].pos.x,
-            battles[bid].items[item_id].pos.y);
-    if (item_kind == ITEM_MAGMA) {
-        battles[bid].items[item_id].times = MAGMA_INIT_TIMES;
-    }
-}
-
 void random_generate_items(int bid) {
     int random_kind, item_id;
-    if (battles[bid].item_count <= INIT_GRASS_AMOUNT) {
-        random_kind = ITEM_GRASS, item_id = get_unused_item(bid);
+    if (battles[bid].item_count <= 7) {
+        random_kind = 3, item_id = get_unused_item(bid);
         if (item_id == -1) return;
     } else {
-        if (probability(99, 100)) return;
+        if (rand() % 200 > 2) return;
         if (battles[bid].num_of_other >= MAX_OTHER) return;
         item_id = get_unused_item(bid);
         if (item_id == -1) return;
         random_kind = rand() % (ITEM_END - 1) + 1;
-        if (random_kind == ITEM_MAGMA && probability(2, 3)) random_kind = ITEM_MAGAZINE;
-        if (random_kind == ITEM_BLOOD_VIAL && probability(1, 2)) random_kind = ITEM_MAGAZINE;
+        if (rand() % 3 != 0 && random_kind == 2) random_kind = 1;
+        if (rand() % 2 != 0 && random_kind == 4) random_kind = 1;
     }
     battles[bid].item_count++;
     battles[bid].items[item_id].kind = random_kind;
@@ -544,19 +525,19 @@ void *battle_ruler(void *args) {
         move_bullets(bid);
         check_who_is_shooted(bid);
         check_who_is_dead(bid);
-        usleep(GLOBAL_SPEED);
+        usleep(10000);
         move_bullets(bid);
         check_who_is_shooted(bid);
         check_who_is_dead(bid);
-        usleep(GLOBAL_SPEED);
+        usleep(10000);
         move_bullets(bid);
         check_who_is_shooted(bid);
         check_who_is_dead(bid);
-        usleep(GLOBAL_SPEED);
+        usleep(10000);
         move_bullets(bid);
         check_who_is_shooted(bid);
         check_who_is_dead(bid);
-        usleep(GLOBAL_SPEED);
+        usleep(10000);
 
         move_bullets(bid);
         check_who_get_blood_vial(bid);
@@ -568,7 +549,7 @@ void *battle_ruler(void *args) {
         random_generate_items(bid);
 
         inform_all_user_battle_state(bid);
-        usleep(GLOBAL_SPEED);
+        usleep(10000);
     }
     return NULL;
 }
@@ -964,66 +945,21 @@ int client_command_move_right(int uid) {
     return 0;
 }
 
-int client_command_rah(int uid) {
-    log("user %s fire\n", sessions[uid].user_name);
+int client_command_fire(int uid) {
+    log("user %s fire up\n", sessions[uid].user_name);
     int bid = sessions[uid].bid;
     int item_id = get_unused_item(bid);
     log("alloc item %d for bullet\n", item_id);
     if (item_id == -1) return 0;
-    int x = battles[bid].users[uid].pos.x;
-    int y = battles[bid].users[uid].pos.y;
-    switch (battles[bid].users[uid].dir) {
-        case DIR_UP: {
-            for (int i = 1; i <= MAX_MAGMA_SIZ; ++i)
-            {
-                forced_generate_item(bid, ITEM_MAGMA, x, max(y - i, 0));
-				usleep(RAH_SLEEP_BREAK);
-            }
-            break;
-        }
-        case DIR_DOWN:  {
-            for (int i = 1; i <= MAX_MAGMA_SIZ; ++i)
-            {
-                forced_generate_item(bid, ITEM_MAGMA, x, min(y + i, SCR_H - 1));
-				usleep(RAH_SLEEP_BREAK);
-            }
-            break;
-        }
-        case DIR_LEFT: {
-            for (int i = 1; i <= MAX_MAGMA_SIZ; ++i)
-            {
-                forced_generate_item(bid, ITEM_MAGMA, max(x - i, 0), y);
-				usleep(RAH_SLEEP_BREAK);
-            }
-            break;
-        }
-        case DIR_RIGHT: {
-            for (int i = 1; i <= MAX_MAGMA_SIZ; ++i)
-            {
-                forced_generate_item(bid, ITEM_MAGMA, min(x + i, SCR_W - 1), y);
-				usleep(RAH_SLEEP_BREAK);
-            }
-            break;
-        }
-    }
-    return 0;
-}
-
-int client_command_fire(int uid, int delta_x, int delta_y, int dir) {
-    log("user %s fire %d\n", sessions[uid].user_name, dir);
-    int bid = sessions[uid].bid;
-    int item_id = get_unused_item(bid);
-    log("alloc item %d for bullet\n", item_id);
-    if (item_id == -1) return 1;
 
     if (battles[bid].users[uid].nr_bullets <= 0) {
         send_to_client(uid, SERVER_MESSAGE_YOUR_MAGAZINE_IS_EMPTY);
-        return -1;
+        return 0;
     }
-    int x = battles[bid].users[uid].pos.x + delta_x;
-    int y = battles[bid].users[uid].pos.y + delta_y;
-    if (x < 0 || x >= SCR_W) return 1;
-    if (y < 0 || y >= SCR_H) return 1;
+
+    int x = battles[bid].users[uid].pos.x;
+    int y = battles[bid].users[uid].pos.y;
+    int dir = battles[bid].users[uid].dir;
     log("bullet, %s@(%d, %d), direct to %d\n",
             sessions[uid].user_name, x, y, dir);
     battles[bid].items[item_id].kind = ITEM_BULLET;
@@ -1031,80 +967,115 @@ int client_command_fire(int uid, int delta_x, int delta_y, int dir) {
     battles[bid].items[item_id].owner = uid;
     battles[bid].items[item_id].pos.x = x;
     battles[bid].items[item_id].pos.y = y;
+
     battles[bid].users[uid].nr_bullets --;
+
     return 0;
 }
 
 int client_command_fire_up(int uid) {
-    return client_command_fire(uid, 0, 0, DIR_UP);
-}
-int client_command_fire_down(int uid) {
-    return client_command_fire(uid, 0, 0, DIR_DOWN);
-}
-int client_command_fire_left(int uid) {
-    return client_command_fire(uid, 0, 0, DIR_LEFT);
-}
-int client_command_fire_right(int uid) {
-    return client_command_fire(uid, 0, 0, DIR_RIGHT);
-}
+    log("user %s fire up\n", sessions[uid].user_name);
+    int bid = sessions[uid].bid;
+    int item_id = get_unused_item(bid);
+    log("alloc item %d for bullet\n", item_id);
+    if (item_id == -1) return 0;
 
-int client_command_advanced_fire(int uid, int dir) {
-    for (int i = 0; ; i++) {
-        for (int j = -i; j <= i; j++) {
-            switch (dir) {
-                case DIR_UP:
-                    if (client_command_fire(uid, j, -i + abs(j), dir) < 0) return 0;
-                    break;
-                case DIR_DOWN:
-                    if (client_command_fire(uid, j, i - abs(j), dir) < 0) return 0;
-                    break;
-                case DIR_LEFT:
-                    if (client_command_fire(uid, -i + abs(j), j, dir) < 0) return 0;
-                    break;
-                case DIR_RIGHT:
-                    if (client_command_fire(uid, i - abs(j), j, dir) < 0) return 0;
-                    break;
-            }
-        }
+    if (battles[bid].users[uid].nr_bullets <= 0) {
+        send_to_client(uid, SERVER_MESSAGE_YOUR_MAGAZINE_IS_EMPTY);
+        return 0;
     }
+
+    int x = battles[bid].users[uid].pos.x;
+    int y = battles[bid].users[uid].pos.y;
+    log("bullet, %s@(%d, %d), direct to %d\n",
+            sessions[uid].user_name, x, y, DIR_UP);
+    battles[bid].items[item_id].kind = ITEM_BULLET;
+    battles[bid].items[item_id].dir = DIR_UP;
+    battles[bid].items[item_id].owner = uid;
+    battles[bid].items[item_id].pos.x = x;
+    battles[bid].items[item_id].pos.y = y;
+
+    battles[bid].users[uid].nr_bullets --;
+
     return 0;
 }
-
-int client_command_advanced_fire_up(int uid) {
-    return client_command_advanced_fire(uid, DIR_UP);
-}
-int client_command_advanced_fire_down(int uid) {
-    return client_command_advanced_fire(uid, DIR_DOWN);
-}
-int client_command_advanced_fire_left(int uid) {
-    return client_command_advanced_fire(uid, DIR_LEFT);
-}
-int client_command_advanced_fire_right(int uid) {
-    return client_command_advanced_fire(uid, DIR_RIGHT);
-}
-
-int client_command_rah_up(int uid) {
+int client_command_fire_down(int uid) {
+    log("user %s fire\n", sessions[uid].user_name);
     int bid = sessions[uid].bid;
-    battles[bid].users[uid].dir = DIR_UP;
-	return client_command_rah(uid);
-}
+    int item_id = get_unused_item(bid);
+    log("alloc item %d for bullet\n", item_id);
+    if (item_id == -1) return 0;
 
-int client_command_rah_down(int uid) {
-    int bid = sessions[uid].bid;
-    battles[bid].users[uid].dir = DIR_DOWN;
-	return client_command_rah(uid);
-}
+    if (battles[bid].users[uid].nr_bullets <= 0) {
+        send_to_client(uid, SERVER_MESSAGE_YOUR_MAGAZINE_IS_EMPTY);
+        return 0;
+    }
 
-int client_command_rah_left(int uid) {
-    int bid = sessions[uid].bid;
-    battles[bid].users[uid].dir = DIR_LEFT;
-	return client_command_rah(uid);
-}
+    int x = battles[bid].users[uid].pos.x;
+    int y = battles[bid].users[uid].pos.y;
+    log("bullet, %s@(%d, %d), direct to %d\n",
+            sessions[uid].user_name, x, y, DIR_DOWN);
+    battles[bid].items[item_id].kind = ITEM_BULLET;
+    battles[bid].items[item_id].dir = DIR_DOWN;
+    battles[bid].items[item_id].owner = uid;
+    battles[bid].items[item_id].pos.x = x;
+    battles[bid].items[item_id].pos.y = y;
 
-int client_command_rah_right(int uid) {
+    battles[bid].users[uid].nr_bullets --;
+
+    return 0;
+}
+int client_command_fire_left(int uid) {
+    log("user %s fire\n", sessions[uid].user_name);
     int bid = sessions[uid].bid;
-    battles[bid].users[uid].dir = DIR_RIGHT;
-	return client_command_rah(uid);
+    int item_id = get_unused_item(bid);
+    log("alloc item %d for bullet\n", item_id);
+    if (item_id == -1) return 0;
+
+    if (battles[bid].users[uid].nr_bullets <= 0) {
+        send_to_client(uid, SERVER_MESSAGE_YOUR_MAGAZINE_IS_EMPTY);
+        return 0;
+    }
+
+    int x = battles[bid].users[uid].pos.x;
+    int y = battles[bid].users[uid].pos.y;
+    log("bullet, %s@(%d, %d), direct to %d\n",
+            sessions[uid].user_name, x, y, DIR_LEFT);
+    battles[bid].items[item_id].kind = ITEM_BULLET;
+    battles[bid].items[item_id].dir = DIR_LEFT;
+    battles[bid].items[item_id].owner = uid;
+    battles[bid].items[item_id].pos.x = x;
+    battles[bid].items[item_id].pos.y = y;
+
+    battles[bid].users[uid].nr_bullets --;
+
+    return 0;
+}
+int client_command_fire_right(int uid) {
+    log("user %s fire\n", sessions[uid].user_name);
+    int bid = sessions[uid].bid;
+    int item_id = get_unused_item(bid);
+    log("alloc item %d for bullet\n", item_id);
+    if (item_id == -1) return 0;
+
+    if (battles[bid].users[uid].nr_bullets <= 0) {
+        send_to_client(uid, SERVER_MESSAGE_YOUR_MAGAZINE_IS_EMPTY);
+        return 0;
+    }
+
+    int x = battles[bid].users[uid].pos.x;
+    int y = battles[bid].users[uid].pos.y;
+    log("bullet, %s@(%d, %d), direct to %d\n",
+            sessions[uid].user_name, x, y, DIR_RIGHT);
+    battles[bid].items[item_id].kind = ITEM_BULLET;
+    battles[bid].items[item_id].dir = DIR_RIGHT;
+    battles[bid].items[item_id].owner = uid;
+    battles[bid].items[item_id].pos.x = x;
+    battles[bid].items[item_id].pos.y = y;
+
+    battles[bid].users[uid].nr_bullets --;
+
+    return 0;
 }
 
 int client_message_fatal(int uid) {
@@ -1136,19 +1107,11 @@ static int(*handler[])(int) = {
     [CLIENT_COMMAND_MOVE_DOWN] = client_command_move_down,
     [CLIENT_COMMAND_MOVE_LEFT] = client_command_move_left,
     [CLIENT_COMMAND_MOVE_RIGHT] = client_command_move_right,
-    [CLIENT_COMMAND_FIRE] = client_command_rah,
+    [CLIENT_COMMAND_FIRE] = client_command_fire,
     [CLIENT_COMMAND_FIRE_UP] = client_command_fire_up,
     [CLIENT_COMMAND_FIRE_DOWN] = client_command_fire_down,
     [CLIENT_COMMAND_FIRE_LEFT] = client_command_fire_left,
     [CLIENT_COMMAND_FIRE_RIGHT] = client_command_fire_right,
-    [CLIENT_COMMAND_RAH_UP] = client_command_rah_up,
-    [CLIENT_COMMAND_RAH_DOWN] = client_command_rah_down,
-    [CLIENT_COMMAND_RAH_LEFT] = client_command_rah_left,
-    [CLIENT_COMMAND_RAH_RIGHT] = client_command_rah_right,
-    [CLIENT_COMMAND_ADVANCED_FIRE_UP] = client_command_advanced_fire_up,
-    [CLIENT_COMMAND_ADVANCED_FIRE_DOWN] = client_command_advanced_fire_down,
-    [CLIENT_COMMAND_ADVANCED_FIRE_LEFT] = client_command_advanced_fire_left,
-    [CLIENT_COMMAND_ADVANCED_FIRE_RIGHT] = client_command_advanced_fire_right,
     [CLIENT_MESSAGE_FATAL] = client_message_fatal,
 };
 
