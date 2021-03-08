@@ -1443,9 +1443,9 @@ int main(int argc, char* argv[]) {
     wlog("====================START====================\n");
     log("client " VERSION "\n");
     client_fd = connect_to_server();
-    if (signal(SIGSEGV, terminate) == SIG_ERR) {
-        log("failed to set signal");
-    }
+    //if (signal(SIGSEGV, terminate) == SIG_ERR) {
+        //log("failed to set signal");
+    //}
     if (signal(SIGINT, terminate) == SIG_ERR) {
         log("failed to set signal");
     }
