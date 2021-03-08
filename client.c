@@ -19,7 +19,7 @@ static int scr_actual_w = 0;
 static int scr_actual_h = 0;
 
 static int user_hp = 0;
-static int user_energy = 0;
+static int user_bullets = 0;
 static int user_state = USER_STATE_NOT_LOGIN;
 static char* user_name = "<unknown>";
 static char* user_state_s[] = {
@@ -37,8 +37,6 @@ static char* server_addr;
 static int global_serv_message = -1;
 
 pthread_mutex_t cursor_lock = PTHREAD_MUTEX_INITIALIZER;
-
-int usleep(int usec);
 
 char* readline();
 
@@ -102,7 +100,7 @@ static char* server_message_s[] = {
     [SERVER_MESSAGE_USER_QUIT_BATTLE] = "SERVER_MESSAGE_USER_QUIT_BATTLE",
     [SERVER_MESSAGE_BATTLE_DISBANDED] = "SERVER_MESSAGE_BATTLE_DISBANDED",
     [SERVER_MESSAGE_BATTLE_INFORMATION] = "SERVER_MESSAGE_BATTLE_INFORMATION",
-    [SERVER_MESSAGE_ENERGY_NOT_ENOUGH] = "SERVER_MESSAGE_ENERGY_NOT_ENOUGH",
+    [SERVER_MESSAGE_YOUR_MAGAZINE_IS_EMPTY] = "SERVER_MESSAGE_YOUR_MAGAZINE_IS_EMPTY",
     [SERVER_MESSAGE_YOU_ARE_DEAD] = "SERVER_MESSAGE_YOU_ARE_DEAD",
     [SERVER_MESSAGE_YOU_ARE_SHOOTED] = "SERVER_MESSAGE_YOU_ARE_SHOOTED",
     [SERVER_MESSAGE_YOU_ARE_TRAPPED_IN_MAGMA] = "SERVER_MESSAGE_YOU_ARE_TRAPPED_IN_MAGMA",
@@ -465,17 +463,17 @@ char* readline() {
         fflush(stdout);
     while ((ch = get_key()) != '\n') {
         switch (ch) {
-            //case '\033': {
-            //    ch = get_key();
-            //    ch = get_key();
-            //    assert('A' <= ch && ch <= 'D');
-            //    break;
-            //}
-            //case 0x7f: {
-            //    if (line_ptr == 0) break;
-            //    READLINE_BACKSPACE;
-            //    break;
-            //}
+            case '\033': {
+                ch = get_key();
+                ch = get_key();
+                assert('A' <= ch && ch <= 'D');
+                break;
+            }
+            case 0x7f: {
+                if (line_ptr == 0) break;
+                READLINE_BACKSPACE;
+                break;
+            }
             default: {
                 if (line_ptr < sizeof(line) - 1
                     && 0x20 <= ch && ch < 0x80) {
@@ -537,7 +535,7 @@ void write_log(const char* format, ...) {
 
 void display_user_state() {
     assert(user_state <= sizeof(user_state_s) / sizeof(user_state_s[0]));
-    bottom_bar_output(-1, "name: %s  HP: %d  energy: %d  state: %s", user_name, user_hp, user_energy, user_state_s[user_state]);
+    bottom_bar_output(-1, "name: %s  HP: %d  bullets: %d  state: %s", user_name, user_hp, user_bullets, user_state_s[user_state]);
 }
 
 void server_say(const char* message) {
@@ -843,27 +841,26 @@ void run_battle() {
             case 's': send_command(CLIENT_COMMAND_MOVE_DOWN); break;
             case 'a': send_command(CLIENT_COMMAND_MOVE_LEFT); break;
             case 'd': send_command(CLIENT_COMMAND_MOVE_RIGHT); break;
-            case ' ': send_command(CLIENT_COMMAND_HIDE); break;
+            case ' ': send_command(CLIENT_COMMAND_FIRE); break;
             case 'k': send_command(CLIENT_COMMAND_FIRE_UP); break;
             case 'j': send_command(CLIENT_COMMAND_FIRE_DOWN); break;
             case 'h': send_command(CLIENT_COMMAND_FIRE_LEFT); break;
             case 'l': send_command(CLIENT_COMMAND_FIRE_RIGHT); break;
-            case 'K': send_command(CLIENT_COMMAND_ADVANCED_FIRE_UP), usleep(GLOBAL_SPEED); break;
-            case 'J': send_command(CLIENT_COMMAND_ADVANCED_FIRE_DOWN), usleep(GLOBAL_SPEED); break;
-            case 'H': send_command(CLIENT_COMMAND_ADVANCED_FIRE_LEFT), usleep(GLOBAL_SPEED); break;
-            case 'L': send_command(CLIENT_COMMAND_ADVANCED_FIRE_RIGHT), usleep(GLOBAL_SPEED); break;
-            /*
+            case 'K': send_command(CLIENT_COMMAND_ADVANCED_FIRE_UP); break;
+            case 'J': send_command(CLIENT_COMMAND_ADVANCED_FIRE_DOWN); break;
+            case 'H': send_command(CLIENT_COMMAND_ADVANCED_FIRE_LEFT); break;
+            case 'L': send_command(CLIENT_COMMAND_ADVANCED_FIRE_RIGHT); break;
 			case '': {
 				ch = get_key();
 				ch = get_key();
 				switch (ch) 
 				{
-					case 'A': send_command(CLIENT_COMMAND_HIDE_UP);   break;
-					case 'B': send_command(CLIENT_COMMAND_HIDE_DOWN); break;
-					case 'D': send_command(CLIENT_COMMAND_HIDE_LEFT); break;
-					case 'C': send_command(CLIENT_COMMAND_HIDE_RIGHT);break;
+					case 'A': send_command(CLIENT_COMMAND_RAH_UP);   break;
+					case 'B': send_command(CLIENT_COMMAND_RAH_DOWN); break;
+					case 'D': send_command(CLIENT_COMMAND_RAH_LEFT); break;
+					case 'C': send_command(CLIENT_COMMAND_RAH_RIGHT);break;
 				}
-		    }*/
+		    }
         }
     }
 
@@ -1305,7 +1302,7 @@ int serv_msg_battle_info(server_message_t* psm) {
     wlog("call message handler %s\n", __func__);
     if (user_state == USER_STATE_BATTLE) {
         log_psm_info(psm);
-        user_energy = psm->energy_num;
+        user_bullets = psm->bullets_num;
         user_hp = psm->life;
         flip_old_items(psm);
         draw_users(psm);
@@ -1341,13 +1338,13 @@ int serv_msg_you_got_blood_vial(server_message_t* psm) {
 
 int server_message_you_got_magazine(server_message_t* psm) {
     wlog("call message handler %s\n", __func__);
-    server_say("you got energy");
+    server_say("you got charger");
     return 0;
 }
 
-int server_message_energy_not_enough(server_message_t* psm) {
+int server_message_your_magazine_is_empty(server_message_t* psm) {
     wlog("call message handler %s\n", __func__);
-    server_say("your energy not enough");
+    server_say("your charger is empty");
     return 0;
 }
 
@@ -1384,7 +1381,7 @@ static int (*recv_msg_func[])(server_message_t*) = {
     [SERVER_MESSAGE_YOU_ARE_TRAPPED_IN_MAGMA] = serv_msg_you_are_trapped_in_magma,
     [SERVER_MESSAGE_YOU_GOT_BLOOD_VIAL] = serv_msg_you_got_blood_vial,
     [SERVER_MESSAGE_YOU_GOT_MAGAZINE] = server_message_you_got_magazine,
-    [SERVER_MESSAGE_ENERGY_NOT_ENOUGH] = server_message_energy_not_enough,
+    [SERVER_MESSAGE_YOUR_MAGAZINE_IS_EMPTY] = server_message_your_magazine_is_empty,
     [SERVER_MESSAGE_QUIT] = serv_quit,
     [SERVER_MESSAGE_FATAL] = serv_fatal,
 };
@@ -1443,9 +1440,9 @@ int main(int argc, char* argv[]) {
     wlog("====================START====================\n");
     log("client " VERSION "\n");
     client_fd = connect_to_server();
-    //if (signal(SIGSEGV, terminate) == SIG_ERR) {
-        //log("failed to set signal");
-    //}
+    if (signal(SIGSEGV, terminate) == SIG_ERR) {
+        log("failed to set signal");
+    }
     if (signal(SIGINT, terminate) == SIG_ERR) {
         log("failed to set signal");
     }
