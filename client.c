@@ -463,12 +463,6 @@ char* readline() {
         fflush(stdout);
     while ((ch = get_key()) != '\n') {
         switch (ch) {
-            case '\033': {
-                ch = get_key();
-                ch = get_key();
-                assert('A' <= ch && ch <= 'D');
-                break;
-            }
             case 0x7f: {
                 if (line_ptr == 0) break;
                 READLINE_BACKSPACE;
@@ -831,7 +825,7 @@ void run_battle() {
             send_command(CLIENT_COMMAND_QUIT_BATTLE);
             send_command(CLIENT_COMMAND_FETCH_ALL_FRIENDS);
             break;
-        } else if (ch == '\t' || ch == 'i' || ch == ':') {
+        } else if (ch == '\t') {
             wlog("type <TAB> and enter command mode\n");
             read_and_execute_command();
         }
@@ -850,7 +844,7 @@ void run_battle() {
             case 'J': send_command(CLIENT_COMMAND_ADVANCED_FIRE_DOWN); break;
             case 'H': send_command(CLIENT_COMMAND_ADVANCED_FIRE_LEFT); break;
             case 'L': send_command(CLIENT_COMMAND_ADVANCED_FIRE_RIGHT); break;
-			case '': {
+			/*case '': {
 				ch = get_key();
 				ch = get_key();
 				switch (ch) 
@@ -860,7 +854,7 @@ void run_battle() {
 					case 'D': send_command(CLIENT_COMMAND_RAH_LEFT); break;
 					case 'C': send_command(CLIENT_COMMAND_RAH_RIGHT);break;
 				}
-		    }
+		    }*/
         }
     }
 
