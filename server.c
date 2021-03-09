@@ -1115,7 +1115,7 @@ void close_session(int conn, int message) {
 
 void* session_start(void* args) {
     int uid = -1;
-    session_args_t info = *(session_args_t*)args;
+    session_args_t info = *(session_args_t*)(uintptr_t)args;
     client_message_t* pcm = NULL;
     if ((uid = get_unused_session()) < 0) {
         close_session(info.conn, SERVER_RESPONSE_LOGIN_FAIL_SERVER_LIMITS);
@@ -1248,13 +1248,13 @@ int main(int argc, char* argv[]) {
     struct sockaddr_in client_addr;
     socklen_t length = sizeof(client_addr);
     while (1) {
-        session_args_t info;
+        static session_args_t info;
         info.conn = accept(server_fd, (struct sockaddr*)&client_addr, &length);
         strncpy(info.ip_addr, inet_ntoa(client_addr.sin_addr), IPADDR_SIZE);
         log("connected by [%s:%d] , conn:%d\n", info.ip_addr, client_addr.sin_port, info.conn);
         if (info.conn < 0) {
             loge("fail to accept client.\n");
-        } else if (pthread_create(&thread, NULL, session_start, (void*)&info) != 0) {
+        } else if (pthread_create(&thread, NULL, session_start, (void*)(uintptr_t)&info) != 0) {
             loge("fail to create thread.\n");
         }
         logi("bind thread #%lu\n", thread);

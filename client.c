@@ -1504,13 +1504,13 @@ void terminate(int signum) {
 int main(int argc, char* argv[]) {
     system("rm ./log.txt");
     if (argc >= 2) {
-        server_addr = (char*)malloc(256);
+        server_addr = (char*)malloc(IPADDR_SIZE);
         strcpy(server_addr, argv[1]);
         if (argc >= 3) {
             port = atoi(argv[2]);
         }
     } else {
-        server_addr = (char*)malloc(256);
+        server_addr = (char*)malloc(IPADDR_SIZE);
         strcpy(server_addr, "127.0.0.1");
     }
     wlog("====================START====================\n");
