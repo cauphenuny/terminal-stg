@@ -955,7 +955,7 @@ int client_command_fire(int uid, int delta_x, int delta_y, int dir) {
 
     if (battles[bid].users[uid].nr_bullets <= 0) {
         send_to_client(uid, SERVER_MESSAGE_YOUR_MAGAZINE_IS_EMPTY);
-        return 1;
+        return 0;
     }
     int x = battles[bid].users[uid].pos.x + delta_x;
     int y = battles[bid].users[uid].pos.y + delta_y;
