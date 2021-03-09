@@ -1045,7 +1045,7 @@ void start_ui() {
     while (1) {
         draw_button_in_start_ui();
         display_user_state();
-        int sel = switch_selected_button_respond_to_key(buttonLogin, buttonQuitGame);
+        int sel = switch_selected_button_respond_to_key(buttonLogin, buttonQuitGame + 1);
         wlog("user select %d@%s\n", sel, buttons[sel].s);
         buttons[sel].button_func();
 
