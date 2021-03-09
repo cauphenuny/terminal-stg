@@ -638,7 +638,6 @@ void resume_and_exit(int status) {
     show_cursor();
     send_command(CLIENT_COMMAND_USER_QUIT);
     wrap_set_term_attr(&raw_termio);
-    set_cursor(0, SCR_H);
     close(client_fd);
     wlog("====================EXIT====================\n\n\n");
     exit(status);
@@ -1497,7 +1496,7 @@ void start_message_monitor() {
 }
 
 void terminate(int signum) {
-    system("clear");
+    flip_screen();
     log("received signal %s, terminate.\033[?25h\n", signal_name_s[signum]);
     resume_and_exit(signum);
 }
@@ -1527,7 +1526,7 @@ int main(int argc, char* argv[]) {
         log("failed to set signal");
     }
 
-    system("clear");
+    flip_screen();
     init_scr_wh();
     wrap_get_term_attr(&raw_termio);
     hide_cursor();
