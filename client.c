@@ -1498,7 +1498,7 @@ void start_message_monitor() {
 
 void terminate(int signum) {
     system("clear");
-    log("received signal %s, terminate.\033[?25h", signal_name_s[signum]);
+    log("received signal %s, terminate.\033[?25h\n", signal_name_s[signum]);
     resume_and_exit(signum);
 }
 
