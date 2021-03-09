@@ -1,7 +1,7 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#define VERSION "v1.6.1"
+#define VERSION "v2.0.0 <beta1>"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -126,10 +126,10 @@
 #define SCR_W 79
 #define SCR_H 23
 
-//#define BATTLE_W (SCR_W)
-//#define BATTLE_H (SCR_H - 2)
-#define BATTLE_W 40
-#define BATTLE_H 12
+#define BATTLE_W (SCR_W)
+#define BATTLE_H (SCR_H - 2)
+//#define BATTLE_W 40
+//#define BATTLE_H 12
 
 #define IPADDR_SIZE 24
 #define USERNAME_SIZE  12

@@ -951,16 +951,16 @@ int client_command_fire(int uid, int delta_x, int delta_y, int dir) {
     int bid = sessions[uid].bid;
     int item_id = get_unused_item(bid);
     log("alloc item %d for bullet\n", item_id);
-    if (item_id == -1) return 1;
+    if (item_id == -1) return 0;
 
     if (battles[bid].users[uid].nr_bullets <= 0) {
         send_to_client(uid, SERVER_MESSAGE_YOUR_MAGAZINE_IS_EMPTY);
-        return -1;
+        return 1;
     }
     int x = battles[bid].users[uid].pos.x + delta_x;
     int y = battles[bid].users[uid].pos.y + delta_y;
-    if (x < 0 || x >= BATTLE_W) return 1;
-    if (y < 0 || y >= BATTLE_H) return 1;
+    if (x < 0 || x >= BATTLE_W) return 0;
+    if (y < 0 || y >= BATTLE_H) return 0;
     log("bullet, %s@(%d, %d), direct to %d\n",
         sessions[uid].user_name, x, y, dir);
     battles[bid].items[item_id].kind = ITEM_BULLET;
@@ -973,16 +973,20 @@ int client_command_fire(int uid, int delta_x, int delta_y, int dir) {
 }
 
 int client_command_fire_up(int uid) {
-    return client_command_fire(uid, 0, 0, DIR_UP);
+    client_command_fire(uid, 0, 0, DIR_UP);
+    return 0;
 }
 int client_command_fire_down(int uid) {
-    return client_command_fire(uid, 0, 0, DIR_DOWN);
+    client_command_fire(uid, 0, 0, DIR_DOWN);
+    return 0;
 }
 int client_command_fire_left(int uid) {
-    return client_command_fire(uid, 0, 0, DIR_LEFT);
+    client_command_fire(uid, 0, 0, DIR_LEFT);
+    return 0;
 }
 int client_command_fire_right(int uid) {
-    return client_command_fire(uid, 0, 0, DIR_RIGHT);
+    client_command_fire(uid, 0, 0, DIR_RIGHT);
+    return 0;
 }
 
 int client_command_fire_aoe(int uid, int dir) {
@@ -992,16 +996,16 @@ int client_command_fire_aoe(int uid, int dir) {
         for (int j = -i; j <= i && limit; j++) {
             switch (dir) {
                 case DIR_UP:
-                    if (client_command_fire(uid, j, -i + abs(j), dir) < 0) return 0;
+                    if (client_command_fire(uid, j, -i + abs(j), dir) != 0) return 0;
                     break;
                 case DIR_DOWN:
-                    if (client_command_fire(uid, j, i - abs(j), dir) < 0) return 0;
+                    if (client_command_fire(uid, j, i - abs(j), dir) != 0) return 0;
                     break;
                 case DIR_LEFT:
-                    if (client_command_fire(uid, -i + abs(j), j, dir) < 0) return 0;
+                    if (client_command_fire(uid, -i + abs(j), j, dir) != 0) return 0;
                     break;
                 case DIR_RIGHT:
-                    if (client_command_fire(uid, i - abs(j), j, dir) < 0) return 0;
+                    if (client_command_fire(uid, i - abs(j), j, dir) != 0) return 0;
                     break;
             }
             limit--;
