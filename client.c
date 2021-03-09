@@ -22,6 +22,7 @@ static int user_hp = 0;
 static int user_bullets = 0;
 static int user_state = USER_STATE_NOT_LOGIN;
 static char* user_name = "<unknown>";
+static char* log_file = "runtime.log";
 static char* user_state_s[] = {
     [USER_STATE_NOT_LOGIN] = "not login",
     [USER_STATE_LOGIN] = "login",
@@ -582,7 +583,7 @@ void bottom_bar_output(int line, const char* format, ...) {
 }
 
 void write_log(const char* format, ...) {
-    FILE* fp = fopen("log.txt", "a+");
+    FILE* fp = fopen(log_file, "a+");
 
     va_list ap;
     va_start(ap, format);
@@ -639,6 +640,7 @@ void resume_and_exit(int status) {
     send_command(CLIENT_COMMAND_USER_QUIT);
     wrap_set_term_attr(&raw_termio);
     close(client_fd);
+    //set_cursor(0, SCR_H);
     wlog("====================EXIT====================\n\n\n");
     exit(status);
 }
@@ -770,6 +772,10 @@ void flip_screen() {
     set_cursor(0, SCR_H);
     printf("\033[2J");
     unlock_cursor();
+}
+
+void clear_screen() {
+    printf("\033c");
 }
 
 void draw_button(uint32_t button_id) {
@@ -1058,7 +1064,7 @@ void start_ui() {
 
 int serv_quit(server_message_t* psm) {
     wlog("call message handler %s\n", __func__);
-    system("clear");
+    clear_screen();
     puts("forced terminated by server.\033[?25h" NONE);
     resume_and_exit(1);
     return 0;
@@ -1066,7 +1072,7 @@ int serv_quit(server_message_t* psm) {
 
 int serv_fatal(server_message_t* psm) {
     wlog("call message handler %s\n", __func__);
-    system("clear");
+    clear_screen();
     puts("forced terminated by a user.\033[?25h" NONE);
     resume_and_exit(3);
     return 0;
@@ -1496,13 +1502,16 @@ void start_message_monitor() {
 }
 
 void terminate(int signum) {
-    flip_screen();
-    log("received signal %s, terminate.\033[?25h\n", signal_name_s[signum]);
+    clear_screen();
+    set_cursor(0, 0);
+    printf("received signal %s, terminate.\033[?25h\n", signal_name_s[signum]);
     resume_and_exit(signum);
 }
 
 int main(int argc, char* argv[]) {
-    system("rm ./log.txt");
+    if (access(log_file, F_OK) == 0) {
+        remove(log_file);
+    }
     if (argc >= 2) {
         server_addr = (char*)malloc(IPADDR_SIZE);
         strcpy(server_addr, argv[1]);
@@ -1517,13 +1526,13 @@ int main(int argc, char* argv[]) {
     log("client " VERSION "\n");
     client_fd = connect_to_server();
     if (signal(SIGSEGV, terminate) == SIG_ERR) {
-        log("failed to set signal");
+        wlog("failed to set signal sigsegv");
     }
     if (signal(SIGINT, terminate) == SIG_ERR) {
-        log("failed to set signal");
+        wlog("failed to set signal sigint");
     }
     if (signal(SIGABRT, terminate) == SIG_ERR) {
-        log("failed to set signal");
+        wlog("failed to set signal sigabrt");
     }
 
     flip_screen();
