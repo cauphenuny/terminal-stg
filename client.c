@@ -775,7 +775,8 @@ void flip_screen() {
 }
 
 void clear_screen() {
-    printf("\033c");
+    printf("\033[2J");
+    set_cursor(0, 0);
 }
 
 void draw_button(uint32_t button_id) {
