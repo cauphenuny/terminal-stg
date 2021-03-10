@@ -1,7 +1,7 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#define VERSION "v2.0.0 <beta1>"
+#define VERSION "v2.0.0 <beta2>"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -133,13 +133,13 @@
 
 #define IPADDR_SIZE 24
 #define USERNAME_SIZE  12
-#define MSG_SIZE 96
+#define MSG_SIZE 48
 #define USER_CNT   15
 
 #define PASSWORD_SIZE USERNAME_SIZE
 
 #define INIT_BULLETS 24
-#define MAX_BULLETS 128
+#define MAX_BULLETS 120
 #define BULLETS_PER_MAGAZINE 12
 
 #define INIT_LIFE 6
@@ -149,7 +149,7 @@
 #define INIT_GRASS 5
 
 #define MAGMA_INIT_TIMES 3
-#define MAX_OTHER 128
+#define MAX_OTHER 24
 
 #define MAX_ITEM (USER_CNT * (MAX_BULLETS) + MAX_OTHER)
 
@@ -158,7 +158,6 @@ enum {
     CLIENT_COMMAND_USER_REGISTER,
     CLIENT_COMMAND_USER_LOGIN,
     CLIENT_COMMAND_USER_LOGOUT,
-    CLIENT_MESSAGE_FATAL,
     CLIENT_COMMAND_FETCH_ALL_USERS,
     CLIENT_COMMAND_FETCH_ALL_FRIENDS,
     CLIENT_COMMAND_LAUNCH_BATTLE,
@@ -175,10 +174,11 @@ enum {
     CLIENT_COMMAND_FIRE_DOWN,
     CLIENT_COMMAND_FIRE_LEFT,
     CLIENT_COMMAND_FIRE_RIGHT,
-    CLIENT_COMMAND_FIRE_AOE_UP,
-    CLIENT_COMMAND_FIRE_AOE_DOWN,
-    CLIENT_COMMAND_FIRE_AOE_LEFT,
-    CLIENT_COMMAND_FIRE_AOE_RIGHT,
+    //CLIENT_COMMAND_FIRE_AOE_UP,
+    //CLIENT_COMMAND_FIRE_AOE_DOWN,
+    //CLIENT_COMMAND_FIRE_AOE_LEFT,
+    //CLIENT_COMMAND_FIRE_AOE_RIGHT,
+    CLIENT_MESSAGE_FATAL,
     CLIENT_COMMAND_END,
 };
 
@@ -263,13 +263,13 @@ enum {
 #define USER_STATE_WAIT_TO_BATTLE  4
 
 typedef struct pos_t {
-    uint8_t x;
-    uint8_t y; 
+    uint16_t x;
+    uint16_t y; 
 } pos_t;
 
 // format of messages sended from client to server
 typedef struct client_message_t {
-    uint8_t command;
+    uint16_t command;
     char user_name[USERNAME_SIZE]; // last byte must be zero
     union
     {
@@ -281,8 +281,8 @@ typedef struct client_message_t {
 // format of messages sended from server to client
 typedef struct server_message_t {
     union {
-        uint8_t response;
-        uint8_t message;
+        uint16_t response;
+        uint16_t message;
     };
 
     union {
@@ -291,13 +291,13 @@ typedef struct server_message_t {
 
         struct {
             char user_name[USERNAME_SIZE];
-            uint8_t user_state;
+            uint16_t user_state;
         } all_users[USER_CNT];
 
         struct {
-            uint8_t life, index, bullets_num;
+            uint16_t life, index, bullets_num;
             pos_t user_pos[USER_CNT];
-            uint8_t item_kind[MAX_ITEM];
+            uint16_t item_kind[MAX_ITEM];
             pos_t item_pos[MAX_ITEM];
         };
 

@@ -225,6 +225,7 @@ int button_login() {
             || global_serv_message == SERVER_RESPONSE_LOGIN_FAIL_ERROR_PASSWORD
             || global_serv_message == SERVER_RESPONSE_LOGIN_FAIL_DUP_USERID
             || global_serv_message == SERVER_RESPONSE_LOGIN_FAIL_SERVER_LIMITS)
+            wlog("recv message=%d\n", global_serv_message);
             break;
     } while (1);
     wlog("wait until message=%s\n", server_message_s[global_serv_message]);
@@ -910,10 +911,10 @@ void run_battle() {
             case 'j': send_command(CLIENT_COMMAND_FIRE_DOWN); break;
             case 'h': send_command(CLIENT_COMMAND_FIRE_LEFT); break;
             case 'l': send_command(CLIENT_COMMAND_FIRE_RIGHT); break;
-            case 'K': send_command(CLIENT_COMMAND_FIRE_AOE_UP); break;
-            case 'J': send_command(CLIENT_COMMAND_FIRE_AOE_DOWN); break;
-            case 'H': send_command(CLIENT_COMMAND_FIRE_AOE_LEFT); break;
-            case 'L': send_command(CLIENT_COMMAND_FIRE_AOE_RIGHT); break;
+            //case 'K': send_command(CLIENT_COMMAND_FIRE_AOE_UP); break;
+            //case 'J': send_command(CLIENT_COMMAND_FIRE_AOE_DOWN); break;
+            //case 'H': send_command(CLIENT_COMMAND_FIRE_AOE_LEFT); break;
+            //case 'L': send_command(CLIENT_COMMAND_FIRE_AOE_RIGHT); break;
         }
     }
 
