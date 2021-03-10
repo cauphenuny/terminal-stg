@@ -31,6 +31,7 @@
   4. operations in battle
     * w s a d can move around
 	* k j h l can fire
+    * y n . i can fire
     * K J H L can aoe fire
   5. quit the battle
     * note that even you die, you won't be quited from the battle

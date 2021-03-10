@@ -81,6 +81,7 @@ struct battle_t {
             int times;
         };
         int kind;
+        int count;
         pos_t pos;
     } items[MAX_ITEM];
 
@@ -328,6 +329,7 @@ void random_generate_items(int bid) {
     battles[bid].items[item_id].kind = random_kind;
     battles[bid].items[item_id].pos.x = (rand() & 0x7FFF) % BATTLE_W;
     battles[bid].items[item_id].pos.y = (rand() & 0x7FFF) % BATTLE_H;
+    battles[bid].items[item_id].count = OTHER_ITEM_LASTS_TIME;
     log("new item: #%dk%d(%d,%d)\n", item_id,
         battles[bid].items[item_id].kind,
         battles[bid].items[item_id].pos.x,
@@ -348,16 +350,55 @@ void move_bullets(int bid) {
         // log("try to move bullet %d with dir %d\n", i, battles[bid].items[i].dir);
 
         switch (battles[bid].items[i].dir) {
-            case DIR_UP: (*py)--; break;
-            case DIR_DOWN: (*py)++; break;
-            case DIR_LEFT: (*px)--; break;
-            case DIR_RIGHT: (*px)++; break;
+            case DIR_UP: {
+                if (*py > 0) { (*py)--; break; }
+                else { battles[bid].items[i].dir = DIR_DOWN; break;}
+            }
+            case DIR_DOWN: {
+                if (*py < BATTLE_H) { (*py)++; break; }
+                else { battles[bid].items[i].dir = DIR_UP; break;}
+            }
+            case DIR_LEFT: {
+                if (*px > 0) { (*px)--; break; }
+                else { battles[bid].items[i].dir = DIR_RIGHT; break;}
+            }
+            case DIR_RIGHT: {
+                if (*px < BATTLE_W) { (*px)++; break; }
+                else {battles[bid].items[i].dir = DIR_LEFT; break;}
+            }
+            case DIR_UP_LEFT: {
+                if (*py > 0) { (*py)--; }
+                else { battles[bid].items[i].dir = DIR_DOWN_LEFT; break;}
+                if (*px > 0) { (*px)--; }
+                else { battles[bid].items[i].dir = DIR_UP_RIGHT; break;}
+                break;
+            }
+            case DIR_UP_RIGHT: {
+                if (*py > 0) { (*py)--; }
+                else { battles[bid].items[i].dir = DIR_DOWN_RIGHT; break;}
+                if (*px < BATTLE_W) { (*px)++; }
+                else {battles[bid].items[i].dir = DIR_UP_LEFT; break;}
+                break;
+            }
+            case DIR_DOWN_LEFT: {
+                if (*py < BATTLE_H) { (*py)++; }
+                else { battles[bid].items[i].dir = DIR_UP_LEFT; break;}
+                if (*px > 0) { (*px)--; }
+                else { battles[bid].items[i].dir = DIR_DOWN_RIGHT; break;}
+                break;
+            }
+            case DIR_DOWN_RIGHT: {
+                if (*py < BATTLE_H) { (*py)++; }
+                else { battles[bid].items[i].dir = DIR_UP_RIGHT; break;}
+                if (*px < BATTLE_W) { (*px)++; }
+                else {battles[bid].items[i].dir = DIR_DOWN_LEFT; break;}
+                break;
+            }
         }
-
-        if (*px >= BATTLE_W || *py >= BATTLE_H) {
-            log("free bullet #%d\n", i);
-            battles[bid].items[i].is_used = false;
-        }
+        //if (*px >= BATTLE_W || *py >= BATTLE_H) {
+        //    log("free bullet #%d\n", i);
+        //    battles[bid].items[i].is_used = false;
+        //}
     }
 }
 
@@ -496,6 +537,21 @@ void check_who_is_dead(int bid) {
     }
 }
 
+void check_item_count(int bid) {
+    for (int i = 0; i < MAX_ITEM; i++) {
+        if (battles[bid].items[i].count) {
+            battles[bid].items[i].count--;
+            if (!battles[bid].items[i].count) {
+                battles[bid].items[i].is_used = false;
+                if (battles[bid].items[i].kind < ITEM_END) {
+                    battles[bid].num_of_other--;
+                }
+                log("free item #%d\n", i);
+            }
+        }
+    }
+}
+
 void inform_all_user_battle_state(int bid) {
     server_message_t sm;
     sm.message = SERVER_MESSAGE_BATTLE_INFORMATION;
@@ -537,19 +593,13 @@ void* battle_ruler(void* args) {
         move_bullets(bid);
         check_who_is_shooted(bid);
         check_who_is_dead(bid);
-        usleep(10000);
+        inform_all_user_battle_state(bid);
+        usleep(GLOBAL_SPEED);
         move_bullets(bid);
         check_who_is_shooted(bid);
         check_who_is_dead(bid);
-        usleep(10000);
-        move_bullets(bid);
-        check_who_is_shooted(bid);
-        check_who_is_dead(bid);
-        usleep(10000);
-        move_bullets(bid);
-        check_who_is_shooted(bid);
-        check_who_is_dead(bid);
-        usleep(10000);
+        inform_all_user_battle_state(bid);
+        usleep(GLOBAL_SPEED);
 
         move_bullets(bid);
         check_who_get_blood_vial(bid);
@@ -557,11 +607,12 @@ void* battle_ruler(void* args) {
         check_who_got_charger(bid);
         check_who_is_shooted(bid);
         check_who_is_dead(bid);
+        check_item_count(bid);
 
         random_generate_items(bid);
 
         inform_all_user_battle_state(bid);
-        usleep(10000);
+        usleep(GLOBAL_SPEED);
     }
     return NULL;
 }
@@ -968,6 +1019,7 @@ int client_command_fire(int uid, int delta_x, int delta_y, int dir) {
     battles[bid].items[item_id].owner = uid;
     battles[bid].items[item_id].pos.x = x;
     battles[bid].items[item_id].pos.y = y;
+    battles[bid].items[item_id].count = BULLETS_LASTS_TIME;
     battles[bid].users[uid].nr_bullets--;
     return 0;
 }
@@ -986,6 +1038,23 @@ int client_command_fire_left(int uid) {
 }
 int client_command_fire_right(int uid) {
     client_command_fire(uid, 0, 0, DIR_RIGHT);
+    return 0;
+}
+
+int client_command_fire_up_left(int uid) {
+    client_command_fire(uid, 0, 0, DIR_UP_LEFT);
+    return 0;
+}
+int client_command_fire_up_right(int uid) {
+    client_command_fire(uid, 0, 0, DIR_UP_RIGHT);
+    return 0;
+}
+int client_command_fire_down_left(int uid) {
+    client_command_fire(uid, 0, 0, DIR_DOWN_LEFT);
+    return 0;
+}
+int client_command_fire_down_right(int uid) {
+    client_command_fire(uid, 0, 0, DIR_DOWN_RIGHT);
     return 0;
 }
 
@@ -1041,26 +1110,38 @@ int client_message_fatal(int uid) {
 
 static int (*handler[])(int) = {
     [CLIENT_MESSAGE_FATAL] = client_message_fatal,
+
     [CLIENT_COMMAND_USER_QUIT] = client_command_quit,
     [CLIENT_COMMAND_USER_REGISTER] = client_command_user_register,
     [CLIENT_COMMAND_USER_LOGIN] = client_command_user_login,
     [CLIENT_COMMAND_USER_LOGOUT] = client_command_user_logout,
+
     [CLIENT_COMMAND_FETCH_ALL_USERS] = client_command_fetch_all_users,
     [CLIENT_COMMAND_FETCH_ALL_FRIENDS] = client_command_fetch_all_friends,
+
     [CLIENT_COMMAND_LAUNCH_BATTLE] = client_command_launch_battle,
     [CLIENT_COMMAND_QUIT_BATTLE] = client_command_quit_battle,
     [CLIENT_COMMAND_ACCEPT_BATTLE] = client_command_accept_battle,
     [CLIENT_COMMAND_REJECT_BATTLE] = client_command_reject_battle,
     [CLIENT_COMMAND_INVITE_USER] = client_command_invite_user,
+
     [CLIENT_COMMAND_SEND_MESSAGE] = client_command_send_message,
+
     [CLIENT_COMMAND_MOVE_UP] = client_command_move_up,
     [CLIENT_COMMAND_MOVE_DOWN] = client_command_move_down,
     [CLIENT_COMMAND_MOVE_LEFT] = client_command_move_left,
     [CLIENT_COMMAND_MOVE_RIGHT] = client_command_move_right,
+
     [CLIENT_COMMAND_FIRE_UP] = client_command_fire_up,
     [CLIENT_COMMAND_FIRE_DOWN] = client_command_fire_down,
     [CLIENT_COMMAND_FIRE_LEFT] = client_command_fire_left,
     [CLIENT_COMMAND_FIRE_RIGHT] = client_command_fire_right,
+
+    [CLIENT_COMMAND_FIRE_UP_LEFT] = client_command_fire_up_left,
+    [CLIENT_COMMAND_FIRE_UP_RIGHT] = client_command_fire_up_right,
+    [CLIENT_COMMAND_FIRE_DOWN_LEFT] = client_command_fire_down_left,
+    [CLIENT_COMMAND_FIRE_DOWN_RIGHT] = client_command_fire_down_right,
+
     [CLIENT_COMMAND_FIRE_AOE_UP] = client_command_fire_aoe_up,
     [CLIENT_COMMAND_FIRE_AOE_DOWN] = client_command_fire_aoe_down,
     [CLIENT_COMMAND_FIRE_AOE_LEFT] = client_command_fire_aoe_left,
