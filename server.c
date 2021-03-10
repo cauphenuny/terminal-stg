@@ -342,8 +342,8 @@ void move_bullets(int bid) {
         if (battles[bid].items[i].is_used == false
             || battles[bid].items[i].kind != ITEM_BULLET)
             continue;
-        uint16_t* px = &(battles[bid].items[i].pos.x);
-        uint16_t* py = &(battles[bid].items[i].pos.y);
+        uint8_t* px = &(battles[bid].items[i].pos.x);
+        uint8_t* py = &(battles[bid].items[i].pos.y);
 
         // log("try to move bullet %d with dir %d\n", i, battles[bid].items[i].dir);
 
@@ -1061,10 +1061,10 @@ static int (*handler[])(int) = {
     [CLIENT_COMMAND_FIRE_DOWN] = client_command_fire_down,
     [CLIENT_COMMAND_FIRE_LEFT] = client_command_fire_left,
     [CLIENT_COMMAND_FIRE_RIGHT] = client_command_fire_right,
-    //[CLIENT_COMMAND_FIRE_AOE_UP] = client_command_fire_aoe_up,
-    //[CLIENT_COMMAND_FIRE_AOE_DOWN] = client_command_fire_aoe_down,
-    //[CLIENT_COMMAND_FIRE_AOE_LEFT] = client_command_fire_aoe_left,
-    //[CLIENT_COMMAND_FIRE_AOE_RIGHT] = client_command_fire_aoe_right,
+    [CLIENT_COMMAND_FIRE_AOE_UP] = client_command_fire_aoe_up,
+    [CLIENT_COMMAND_FIRE_AOE_DOWN] = client_command_fire_aoe_down,
+    [CLIENT_COMMAND_FIRE_AOE_LEFT] = client_command_fire_aoe_left,
+    [CLIENT_COMMAND_FIRE_AOE_RIGHT] = client_command_fire_aoe_right,
 };
 
 void wrap_recv(int conn, client_message_t* pcm) {
