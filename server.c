@@ -76,12 +76,9 @@ struct battle_t {
     struct {
         int is_used;
         int dir;
-        union {
-            int owner;
-            int times;
-        };
+        int owner;
+        int times;
         int kind;
-        int count;
         pos_t pos;
     } items[MAX_ITEM];
 
@@ -329,7 +326,7 @@ void random_generate_items(int bid) {
     battles[bid].items[item_id].kind = random_kind;
     battles[bid].items[item_id].pos.x = (rand() & 0x7FFF) % BATTLE_W;
     battles[bid].items[item_id].pos.y = (rand() & 0x7FFF) % BATTLE_H;
-    battles[bid].items[item_id].count = OTHER_ITEM_LASTS_TIME;
+    battles[bid].items[item_id].times = OTHER_ITEM_LASTS_TIME;
     log("new item: #%dk%d(%d,%d)\n", item_id,
         battles[bid].items[item_id].kind,
         battles[bid].items[item_id].pos.x,
@@ -426,6 +423,7 @@ void check_who_get_blood_vial(int bid) {
                 }
 
                 battles[bid].items[i].is_used = false;
+                battles[bid].items[i].kind = ITEM_NONE;
                 battles[bid].num_of_other--;
                 send_to_client(j, SERVER_MESSAGE_YOU_GOT_BLOOD_VIAL);
                 break;
@@ -457,6 +455,7 @@ void check_who_traped_in_magma(int bid) {
                 if (battles[bid].items[i].times <= 0) {
                     log("magma %d is exhausted\n", i);
                     battles[bid].items[i].is_used = false;
+                    battles[bid].items[i].kind = ITEM_NONE;
                     battles[bid].num_of_other--;
                 }
                 break;
@@ -490,6 +489,7 @@ void check_who_got_charger(int bid) {
 
                 send_to_client(j, SERVER_MESSAGE_YOU_GOT_MAGAZINE);
                 battles[bid].items[i].is_used = false;
+                battles[bid].items[i].kind = ITEM_NONE;
                 break;
             }
         }
@@ -517,6 +517,7 @@ void check_who_is_shooted(int bid) {
                 log("user #%d %s@[%s] is shooted\n", j, sessions[j].user_name, sessions[j].ip_addr);
                 send_to_client(j, SERVER_MESSAGE_YOU_ARE_SHOOTED);
                 battles[bid].items[i].is_used = false;
+                battles[bid].items[i].kind = ITEM_NONE;
                 break;
             }
         }
@@ -539,10 +540,12 @@ void check_who_is_dead(int bid) {
 
 void check_item_count(int bid) {
     for (int i = 0; i < MAX_ITEM; i++) {
-        if (battles[bid].items[i].count) {
-            battles[bid].items[i].count--;
-            if (!battles[bid].items[i].count) {
+        if (battles[bid].items[i].times) {
+            if (battles[bid].items[i].kind == ITEM_MAGMA) continue;
+            battles[bid].items[i].times--;
+            if (!battles[bid].items[i].times) {
                 battles[bid].items[i].is_used = false;
+                battles[bid].items[i].kind = ITEM_NONE;
                 if (battles[bid].items[i].kind < ITEM_END) {
                     battles[bid].num_of_other--;
                 }
@@ -1019,7 +1022,7 @@ int client_command_fire(int uid, int delta_x, int delta_y, int dir) {
     battles[bid].items[item_id].owner = uid;
     battles[bid].items[item_id].pos.x = x;
     battles[bid].items[item_id].pos.y = y;
-    battles[bid].items[item_id].count = BULLETS_LASTS_TIME;
+    battles[bid].items[item_id].times = BULLETS_LASTS_TIME;
     battles[bid].users[uid].nr_bullets--;
     return 0;
 }
