@@ -471,7 +471,8 @@ char* readline() {
                 assert('A' <= ch && ch <= 'D');
                 break;
             }
-            case 0x7f: {
+            case 0x7f:
+            case 0x08: {
                 if (line_ptr == 0) break;
                 READLINE_BACKSPACE;
                 break;
