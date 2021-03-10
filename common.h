@@ -1,7 +1,7 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#define VERSION "v2.0.0 <beta3>"
+#define VERSION "v2.0.0 <beta4>"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -149,7 +149,7 @@
 #define INIT_GRASS 5
 
 #define MAGMA_INIT_TIMES 3
-#define MAX_OTHER 15
+#define MAX_OTHER 20
 
 #define BULLETS_LASTS_TIME 100
 #define OTHER_ITEM_LASTS_TIME 200
@@ -242,6 +242,7 @@ enum {
     ITEM_GRASS,
     ITEM_BLOOD_VIAL,
     ITEM_END,
+    ITEM_BLANK,
     ITEM_BULLET,
 };
 

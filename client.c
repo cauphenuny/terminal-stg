@@ -69,6 +69,8 @@ int main_ui();
 
 int private_ui();
 
+void terminate(int signum);
+
 struct catalog_t {
     pos_t pos;
     const char* title;
@@ -1351,7 +1353,8 @@ void draw_items(server_message_t* psm) {
             case ITEM_MAGMA: printf("X"); break;
             case ITEM_GRASS: printf("█"); break;
             case ITEM_BLOOD_VIAL: printf("*"); break;
-            case ITEM_BULLET: printf(".");
+            case ITEM_BULLET: printf("."); break;
+            case ITEM_BLANK: printf(" "); break;
         }
     }
 

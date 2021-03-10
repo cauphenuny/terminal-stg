@@ -310,18 +310,29 @@ int get_unused_item(int bid) {
     return ret_item_id;
 }
 
+void forced_generate_items(int bid, int x, int y, int kind, int count) {
+    int item_id;
+    if (battles[bid].num_of_other >= MAX_OTHER) return;
+    item_id = get_unused_item(bid);
+    if (item_id == -1) return;
+    battles[bid].item_count++;
+    battles[bid].items[item_id].kind = kind;
+    battles[bid].items[item_id].pos.x = x;
+    battles[bid].items[item_id].pos.y = y;
+    battles[bid].items[item_id].times = count;
+    log("new item: #%dk%d(%d,%d)\n", item_id,
+        battles[bid].items[item_id].kind,
+        battles[bid].items[item_id].pos.x,
+        battles[bid].items[item_id].pos.y);
+}
+
 void random_generate_items(int bid) {
     int random_kind, item_id;
-    if (battles[bid].item_count <= INIT_GRASS) {
-        random_kind = ITEM_GRASS, item_id = get_unused_item(bid);
-        if (item_id == -1) return;
-    } else {
-        if (!probability(1, 50)) return;
-        if (battles[bid].num_of_other >= MAX_OTHER) return;
-        item_id = get_unused_item(bid);
-        if (item_id == -1) return;
-        random_kind = rand() % (ITEM_END - 1) + 1;
-    }
+    if (!probability(1, 20)) return;
+    if (battles[bid].num_of_other >= MAX_OTHER) return;
+    item_id = get_unused_item(bid);
+    if (item_id == -1) return;
+    random_kind = rand() % (ITEM_END - 1) + 1;
     battles[bid].item_count++;
     battles[bid].items[item_id].kind = random_kind;
     battles[bid].items[item_id].pos.x = (rand() & 0x7FFF) % BATTLE_W;
@@ -422,8 +433,8 @@ void check_who_get_blood_vial(int bid) {
                     battles[bid].users[j].life = MAX_LIFE;
                 }
 
-                battles[bid].items[i].is_used = false;
-                battles[bid].items[i].kind = ITEM_NONE;
+                battles[bid].items[i].kind = ITEM_BLANK;
+                battles[bid].items[i].times = 0;
                 battles[bid].num_of_other--;
                 send_to_client(j, SERVER_MESSAGE_YOU_GOT_BLOOD_VIAL);
                 break;
@@ -454,8 +465,7 @@ void check_who_traped_in_magma(int bid) {
                 send_to_client(j, SERVER_MESSAGE_YOU_ARE_TRAPPED_IN_MAGMA);
                 if (battles[bid].items[i].times <= 0) {
                     log("magma %d is exhausted\n", i);
-                    battles[bid].items[i].is_used = false;
-                    battles[bid].items[i].kind = ITEM_NONE;
+                    battles[bid].items[i].kind = ITEM_BLANK;
                     battles[bid].num_of_other--;
                 }
                 break;
@@ -488,8 +498,8 @@ void check_who_got_charger(int bid) {
                 }
 
                 send_to_client(j, SERVER_MESSAGE_YOU_GOT_MAGAZINE);
-                battles[bid].items[i].is_used = false;
-                battles[bid].items[i].kind = ITEM_NONE;
+                battles[bid].items[i].kind = ITEM_BLANK;
+                battles[bid].items[i].times = 0;
                 break;
             }
         }
@@ -516,8 +526,8 @@ void check_who_is_shooted(int bid) {
                 battles[bid].users[j].life--;
                 log("user #%d %s@[%s] is shooted\n", j, sessions[j].user_name, sessions[j].ip_addr);
                 send_to_client(j, SERVER_MESSAGE_YOU_ARE_SHOOTED);
-                battles[bid].items[i].is_used = false;
-                battles[bid].items[i].kind = ITEM_NONE;
+                battles[bid].items[i].kind = ITEM_BLANK;
+                battles[bid].items[i].times = 0;
                 break;
             }
         }
@@ -539,20 +549,30 @@ void check_who_is_dead(int bid) {
 }
 
 void check_item_count(int bid) {
+    //log("call func %s\n", __func__);
     for (int i = 0; i < MAX_ITEM; i++) {
-        if (battles[bid].items[i].times) {
+        if (battles[bid].items[i].kind == ITEM_BLANK) {
+            if (battles[bid].items[i].times) {
+                battles[bid].items[i].kind = ITEM_NONE;
+                battles[bid].items[i].times = 0;
+                battles[bid].items[i].is_used = false;
+                log("free item #%d\n", i);
+            } else {
+                battles[bid].items[i].times = 1;
+                continue;
+            }
+        } else if (battles[bid].items[i].times) {
             if (battles[bid].items[i].kind == ITEM_MAGMA) continue;
             battles[bid].items[i].times--;
             if (!battles[bid].items[i].times) {
-                battles[bid].items[i].is_used = false;
-                battles[bid].items[i].kind = ITEM_NONE;
                 if (battles[bid].items[i].kind < ITEM_END) {
                     battles[bid].num_of_other--;
                 }
-                log("free item #%d\n", i);
+                battles[bid].items[i].kind = ITEM_BLANK;
             }
         }
     }
+    //log("check completed...\n");
 }
 
 void inform_all_user_battle_state(int bid) {
@@ -592,6 +612,13 @@ void* battle_ruler(void* args) {
     int bid = (int)(uintptr_t)args;
     log("battle ruler for battle #%d\n", bid);
     // FIXME: battle re-alloced before exiting loop
+    for (int i = 0; i < INIT_GRASS; i++) {
+        forced_generate_items(bid,
+                              (rand() & 0x7FFF) % BATTLE_W,
+                              (rand() & 0x7FFF) % BATTLE_H,
+                              ITEM_GRASS,
+                              10000);
+    }
     while (battles[bid].is_alloced) {
         move_bullets(bid);
         check_who_is_shooted(bid);
