@@ -911,7 +911,7 @@ void run_battle() {
             case 'h': send_command(CLIENT_COMMAND_FIRE_LEFT); break;
             case 'l': send_command(CLIENT_COMMAND_FIRE_RIGHT); break;
             case 'y': send_command(CLIENT_COMMAND_FIRE_UP_LEFT); break;
-            case 'i': send_command(CLIENT_COMMAND_FIRE_UP_RIGHT); break;
+            case 'o': send_command(CLIENT_COMMAND_FIRE_UP_RIGHT); break;
             case 'n': send_command(CLIENT_COMMAND_FIRE_DOWN_LEFT); break;
             case '.': send_command(CLIENT_COMMAND_FIRE_DOWN_RIGHT); break;
             case 'K': send_command(CLIENT_COMMAND_FIRE_AOE_UP); break;
