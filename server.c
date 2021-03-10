@@ -330,7 +330,7 @@ void forced_generate_items(int bid, int x, int y, int kind, int count) {
 
 void random_generate_items(int bid) {
     int random_kind, item_id;
-    if (!probability(1, 20)) return;
+    if (!probability(1, 100)) return;
     if (battles[bid].num_of_other >= MAX_OTHER) return;
     item_id = get_unused_item(bid);
     if (item_id == -1) return;
@@ -340,6 +340,7 @@ void random_generate_items(int bid) {
     battles[bid].items[item_id].pos.x = (rand() & 0x7FFF) % BATTLE_W;
     battles[bid].items[item_id].pos.y = (rand() & 0x7FFF) % BATTLE_H;
     battles[bid].items[item_id].times = OTHER_ITEM_LASTS_TIME;
+    battles[bid].num_of_other ++;
     log("new item: #%dk%d(%d,%d)\n", item_id,
         battles[bid].items[item_id].kind,
         battles[bid].items[item_id].pos.x,
@@ -384,28 +385,28 @@ void move_bullets(int bid) {
             case DIR_UP_LEFT: {
                 if (*py > 0) { (*py)--; }
                 else { battles[bid].items[i].dir = DIR_DOWN_LEFT; break;}
-                if (*px > 0) { (*px)--; }
+                if (*px > 1) { (*px) -= 2; }
                 else { battles[bid].items[i].dir = DIR_UP_RIGHT; break;}
                 break;
             }
             case DIR_UP_RIGHT: {
                 if (*py > 0) { (*py)--; }
                 else { battles[bid].items[i].dir = DIR_DOWN_RIGHT; break;}
-                if (*px < BATTLE_W) { (*px)++; }
+                if (*px < BATTLE_W - 1) { (*px) += 2; }
                 else {battles[bid].items[i].dir = DIR_UP_LEFT; break;}
                 break;
             }
             case DIR_DOWN_LEFT: {
                 if (*py < BATTLE_H) { (*py)++; }
                 else { battles[bid].items[i].dir = DIR_UP_LEFT; break;}
-                if (*px > 0) { (*px)--; }
+                if (*px > 1) { (*px) -= 2; }
                 else { battles[bid].items[i].dir = DIR_DOWN_RIGHT; break;}
                 break;
             }
             case DIR_DOWN_RIGHT: {
                 if (*py < BATTLE_H) { (*py)++; }
                 else { battles[bid].items[i].dir = DIR_UP_RIGHT; break;}
-                if (*px < BATTLE_W) { (*px)++; }
+                if (*px < BATTLE_W - 1) { (*px) += 2; }
                 else {battles[bid].items[i].dir = DIR_DOWN_LEFT; break;}
                 break;
             }
@@ -451,7 +452,7 @@ void check_user_status(int uid) {
                 if (battles[bid].items[i].times <= 0) {
                     log("magma %d is exhausted\n", i);
                     battles[bid].items[i].kind = ITEM_BLANK;
-                    battles[bid].num_of_other--;
+                    //battles[bid].num_of_other--;
                 }
             }
             if (battles[bid].items[i].kind == ITEM_BLOOD_VIAL) {
@@ -463,7 +464,7 @@ void check_user_status(int uid) {
                 }
                 battles[bid].items[i].kind = ITEM_BLANK;
                 battles[bid].items[i].times = 0;
-                battles[bid].num_of_other--;
+                //battles[bid].num_of_other--;
                 send_to_client(uid, SERVER_MESSAGE_YOU_GOT_BLOOD_VIAL);
             }
             break;
