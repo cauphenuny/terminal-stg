@@ -28,6 +28,7 @@ void wrap_recv(int conn, client_message_t* pcm);
 void wrap_send(int conn, server_message_t* psm);
 
 void send_to_client(int uid, int message);
+void say_to_client(int uid, char* message);
 void send_to_client_with_username(int uid, int message, char* user_name);
 void close_session(int conn, int message);
 
@@ -80,6 +81,7 @@ struct battle_t {
         int dir;
         int owner;
         int times;
+        int count;
         int kind;
         pos_t pos;
     } items[MAX_ITEM];
@@ -346,7 +348,7 @@ void random_generate_items(int bid) {
         battles[bid].items[item_id].pos.x,
         battles[bid].items[item_id].pos.y);
     if (random_kind == ITEM_MAGMA) {
-        battles[bid].items[item_id].times = MAGMA_INIT_TIMES;
+        battles[bid].items[item_id].count = MAGMA_INIT_TIMES;
     }
     for (int i = 0; i < USER_CNT; i++) {
         if (battles[bid].users[i].battle_state != BATTLE_STATE_LIVE)
@@ -446,10 +448,10 @@ void check_user_status(int uid) {
             }
             if (battles[bid].items[i].kind == ITEM_MAGMA) {
                 battles[bid].users[uid].life--;
-                battles[bid].items[i].times--;
+                battles[bid].items[i].count--;
                 log("user #%d %s@[%s] is trapped in magma\n", uid, sessions[uid].user_name, sessions[uid].ip_addr);
                 send_to_client(uid, SERVER_MESSAGE_YOU_ARE_TRAPPED_IN_MAGMA);
-                if (battles[bid].items[i].times <= 0) {
+                if (battles[bid].items[i].count <= 0) {
                     log("magma %d is exhausted\n", i);
                     battles[bid].items[i].kind = ITEM_BLANK;
                     //battles[bid].num_of_other--;
@@ -528,7 +530,6 @@ void check_item_count(int bid) {
                 continue;
             }
         } else if (battles[bid].items[i].times) {
-            if (battles[bid].items[i].kind == ITEM_MAGMA) continue;
             battles[bid].items[i].times--;
             if (!battles[bid].items[i].times) {
                 if (battles[bid].items[i].kind < ITEM_END) {
@@ -1080,11 +1081,23 @@ int client_command_fire_aoe_right(int uid) {
     return client_command_fire_aoe(uid, DIR_RIGHT);
 }
 
+int client_command_ban_user(int uid) {
+    if (!sessions[uid].is_admin) return say_to_client(uid, "you are not admin!"), 0;
+    if (sessions[uid].conn >= 0) {
+        log("admin banned user #%d %s@[%s]\n", uid, sessions[uid].user_name, sessions[uid].ip_addr);
+        send_to_client(uid, SERVER_STATUS_QUIT);
+        log("close conn:%d\n", sessions[uid].conn);
+        close(sessions[uid].conn);
+        sessions[uid].conn = -1;
+    }
+    return 0;
+}
+
 int client_message_fatal(int uid) {
     loge("received FATAL from user #%d %s@[%s] \n", uid, sessions[uid].user_name, sessions[uid].ip_addr);
     for (int i = 0; i < USER_CNT; i++) {
         if (sessions[i].conn >= 0) {
-            send_to_client(i, SERVER_MESSAGE_FATAL);
+            send_to_client(i, SERVER_STATUS_FATAL);
             log("send FATAL to user #%d %s@[%s]\n", i, sessions[i].user_name, sessions[i].ip_addr);
         }
     }
@@ -1130,6 +1143,8 @@ static int (*handler[])(int) = {
     [CLIENT_COMMAND_FIRE_AOE_DOWN] = client_command_fire_aoe_down,
     [CLIENT_COMMAND_FIRE_AOE_LEFT] = client_command_fire_aoe_left,
     [CLIENT_COMMAND_FIRE_AOE_RIGHT] = client_command_fire_aoe_right,
+
+    [CLIENT_COMMAND_BAN_USER] = client_command_ban_user,
 };
 
 void wrap_recv(int conn, client_message_t* pcm) {
@@ -1161,6 +1176,15 @@ void send_to_client(int uid, int message) {
     server_message_t sm;
     memset(&sm, 0, sizeof(server_message_t));
     sm.response = message;
+    wrap_send(conn, &sm);
+}
+
+void say_to_client(int uid, char *message) {
+    int conn = sessions[uid].conn;
+    server_message_t sm;
+    memset(&sm, 0, sizeof(server_message_t));
+    sm.message = SERVER_MESSAGE;
+    strncpy(sm.msg, message, MSG_SIZE);
     wrap_send(conn, &sm);
 }
 
@@ -1261,9 +1285,10 @@ void terminate_process(int recved_signal) {
     for (int i = 0; i < USER_CNT; i++) {
         if (sessions[i].conn >= 0) {
             log("send QUIT to user #%d %s@[%s]\n", i, sessions[i].user_name, sessions[i].ip_addr);
-            send_to_client(i, SERVER_MESSAGE_QUIT);
+            send_to_client(i, SERVER_STATUS_QUIT);
             log("close conn:%d\n", sessions[i].conn);
             close(sessions[i].conn);
+            sessions[i].conn = -1;
         }
     }
 

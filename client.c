@@ -114,7 +114,7 @@ static char* server_message_s[] = {
     [SERVER_MESSAGE_YOU_ARE_SHOOTED] = "SERVER_MESSAGE_YOU_ARE_SHOOTED",
     [SERVER_MESSAGE_YOU_ARE_TRAPPED_IN_MAGMA] = "SERVER_MESSAGE_YOU_ARE_TRAPPED_IN_MAGMA",
     [SERVER_MESSAGE_YOU_GOT_BLOOD_VIAL] = "SERVER_MESSAGE_YOU_GOT_BLOOD_VIAL",
-    [SERVER_MESSAGE_QUIT] = "SERVER_MESSAGE_QUIT",
+    [SERVER_STATUS_QUIT] = "SERVER_STATUS_QUIT",
 };
 
 void strlwr(char* s) {
@@ -1438,6 +1438,12 @@ int server_message_your_magazine_is_empty(server_message_t* psm) {
     return 0;
 }
 
+int serv_message(server_message_t* psm) {
+    wlog("call message handler %s\n", __func__);
+    server_say(sformat("%s", psm->msg));
+    return 0;
+}
+
 static int (*recv_msg_func[])(server_message_t*) = {
     [SERVER_RESPONSE_REGISTER_SUCCESS] = serv_response_register_success,
     [SERVER_RESPONSE_REGISTER_FAIL] = serv_response_register_fail,
@@ -1472,8 +1478,9 @@ static int (*recv_msg_func[])(server_message_t*) = {
     [SERVER_MESSAGE_YOU_GOT_BLOOD_VIAL] = serv_msg_you_got_blood_vial,
     [SERVER_MESSAGE_YOU_GOT_MAGAZINE] = server_message_you_got_magazine,
     [SERVER_MESSAGE_YOUR_MAGAZINE_IS_EMPTY] = server_message_your_magazine_is_empty,
-    [SERVER_MESSAGE_QUIT] = serv_quit,
-    [SERVER_MESSAGE_FATAL] = serv_fatal,
+    [SERVER_MESSAGE] = serv_message,
+    [SERVER_STATUS_QUIT] = serv_quit,
+    [SERVER_STATUS_FATAL] = serv_fatal,
 };
 
 void* message_monitor(void* args) {
