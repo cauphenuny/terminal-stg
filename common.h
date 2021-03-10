@@ -1,7 +1,7 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#define VERSION "v2.0.0 <beta4>"
+#define VERSION "v2.0.0 <beta5>"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -151,8 +151,8 @@
 #define MAGMA_INIT_TIMES 3
 #define MAX_OTHER 20
 
-#define BULLETS_LASTS_TIME 100
-#define OTHER_ITEM_LASTS_TIME 200
+#define BULLETS_LASTS_TIME 500
+#define OTHER_ITEM_LASTS_TIME 1000
 #define GLOBAL_SPEED 20000
 
 #define MAX_ITEM (USER_CNT * (MAX_BULLETS) + MAX_OTHER)

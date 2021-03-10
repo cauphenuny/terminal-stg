@@ -31,6 +31,8 @@ void send_to_client(int uid, int message);
 void send_to_client_with_username(int uid, int message, char* user_name);
 void close_session(int conn, int message);
 
+void check_user_status(int uid);
+
 void terminate_process(int recved_signal);
 
 static int user_list_size = 0;
@@ -345,6 +347,11 @@ void random_generate_items(int bid) {
     if (random_kind == ITEM_MAGMA) {
         battles[bid].items[item_id].times = MAGMA_INIT_TIMES;
     }
+    for (int i = 0; i < USER_CNT; i++) {
+        if (battles[bid].users[i].battle_state != BATTLE_STATE_LIVE)
+            continue;
+        check_user_status(i);
+    }
 }
 
 void move_bullets(int bid) {
@@ -410,98 +417,56 @@ void move_bullets(int bid) {
     }
 }
 
-void check_who_get_blood_vial(int bid) {
+void check_user_status(int uid) {
+    int bid = sessions[uid].bid;
+    int ux = battles[bid].users[uid].pos.x;
+    int uy = battles[bid].users[uid].pos.y;
     for (int i = 0; i < MAX_ITEM; i++) {
-        if (battles[bid].items[i].is_used == false
-            || battles[bid].items[i].kind != ITEM_BLOOD_VIAL)
+        if (battles[bid].items[i].is_used == false)
             continue;
 
         int ix = battles[bid].items[i].pos.x;
         int iy = battles[bid].items[i].pos.y;
 
-        for (int j = 0; j < USER_CNT; j++) {
-            if (battles[bid].users[j].battle_state != BATTLE_STATE_LIVE)
-                continue;
-            int ux = battles[bid].users[j].pos.x;
-            int uy = battles[bid].users[j].pos.y;
+        if (battles[bid].users[uid].battle_state != BATTLE_STATE_LIVE)
+            continue;
 
-            if (ix == ux && iy == uy) {
-                battles[bid].users[j].life += LIFE_PER_VIAL;
-                log("user #%d %s@[%s] got blood vial\n", j, sessions[j].user_name, sessions[j].ip_addr);
-                if (battles[bid].users[j].life > MAX_LIFE) {
-                    log("user #%d %s@[%s] life exceeds max value\n", j, sessions[j].user_name, sessions[j].ip_addr);
-                    battles[bid].users[j].life = MAX_LIFE;
+        if (ix == ux && iy == uy) {
+            if (battles[bid].items[i].kind == ITEM_MAGAZINE) {
+                battles[bid].users[uid].nr_bullets += BULLETS_PER_MAGAZINE;
+                log("user #%d %s@[%s] is got magazine\n", uid, sessions[uid].user_name, sessions[uid].ip_addr);
+                if (battles[bid].users[uid].nr_bullets > MAX_BULLETS) {
+                    log("user #%d %s@[%s] 's bullets exceeds max value\n", uid, sessions[uid].user_name, sessions[uid].ip_addr);
+                    battles[bid].users[uid].nr_bullets = MAX_BULLETS;
                 }
-
+                send_to_client(uid, SERVER_MESSAGE_YOU_GOT_MAGAZINE);
                 battles[bid].items[i].kind = ITEM_BLANK;
                 battles[bid].items[i].times = 0;
-                battles[bid].num_of_other--;
-                send_to_client(j, SERVER_MESSAGE_YOU_GOT_BLOOD_VIAL);
-                break;
             }
-        }
-    }
-}
-
-void check_who_traped_in_magma(int bid) {
-    for (int i = 0; i < MAX_ITEM; i++) {
-        if (battles[bid].items[i].is_used == false
-            || battles[bid].items[i].kind != ITEM_MAGMA)
-            continue;
-
-        int ix = battles[bid].items[i].pos.x;
-        int iy = battles[bid].items[i].pos.y;
-
-        for (int j = 0; j < USER_CNT; j++) {
-            if (battles[bid].users[j].battle_state != BATTLE_STATE_LIVE)
-                continue;
-            int ux = battles[bid].users[j].pos.x;
-            int uy = battles[bid].users[j].pos.y;
-
-            if (ix == ux && iy == uy) {
-                battles[bid].users[j].life--;
+            if (battles[bid].items[i].kind == ITEM_MAGMA) {
+                battles[bid].users[uid].life--;
                 battles[bid].items[i].times--;
-                log("user #%d %s@[%s] is trapped in magma\n", j, sessions[j].user_name, sessions[j].ip_addr);
-                send_to_client(j, SERVER_MESSAGE_YOU_ARE_TRAPPED_IN_MAGMA);
+                log("user #%d %s@[%s] is trapped in magma\n", uid, sessions[uid].user_name, sessions[uid].ip_addr);
+                send_to_client(uid, SERVER_MESSAGE_YOU_ARE_TRAPPED_IN_MAGMA);
                 if (battles[bid].items[i].times <= 0) {
                     log("magma %d is exhausted\n", i);
                     battles[bid].items[i].kind = ITEM_BLANK;
                     battles[bid].num_of_other--;
                 }
-                break;
             }
-        }
-    }
-}
-
-void check_who_got_charger(int bid) {
-    for (int i = 0; i < MAX_ITEM; i++) {
-        if (battles[bid].items[i].is_used == false
-            || battles[bid].items[i].kind != ITEM_MAGAZINE)
-            continue;
-
-        int ix = battles[bid].items[i].pos.x;
-        int iy = battles[bid].items[i].pos.y;
-
-        for (int j = 0; j < USER_CNT; j++) {
-            if (battles[bid].users[j].battle_state != BATTLE_STATE_LIVE)
-                continue;
-            int ux = battles[bid].users[j].pos.x;
-            int uy = battles[bid].users[j].pos.y;
-
-            if (ix == ux && iy == uy) {
-                battles[bid].users[j].nr_bullets += BULLETS_PER_MAGAZINE;
-                log("user #%d %s@[%s] is got magazine\n", j, sessions[j].user_name, sessions[j].ip_addr);
-                if (battles[bid].users[j].nr_bullets > MAX_BULLETS) {
-                    log("user #%d %s@[%s] 's bullets exceeds max value\n", j, sessions[j].user_name, sessions[j].ip_addr);
-                    battles[bid].users[j].nr_bullets = MAX_BULLETS;
+            if (battles[bid].items[i].kind == ITEM_BLOOD_VIAL) {
+                battles[bid].users[uid].life += LIFE_PER_VIAL;
+                log("user #%d %s@[%s] got blood vial\n", uid, sessions[uid].user_name, sessions[uid].ip_addr);
+                if (battles[bid].users[uid].life > MAX_LIFE) {
+                    log("user #%d %s@[%s] life exceeds max value\n", uid, sessions[uid].user_name, sessions[uid].ip_addr);
+                    battles[bid].users[uid].life = MAX_LIFE;
                 }
-
-                send_to_client(j, SERVER_MESSAGE_YOU_GOT_MAGAZINE);
                 battles[bid].items[i].kind = ITEM_BLANK;
                 battles[bid].items[i].times = 0;
-                break;
+                battles[bid].num_of_other--;
+                send_to_client(uid, SERVER_MESSAGE_YOU_GOT_BLOOD_VIAL);
             }
+            break;
         }
     }
 }
@@ -624,24 +589,8 @@ void* battle_ruler(void* args) {
         check_who_is_shooted(bid);
         check_who_is_dead(bid);
         inform_all_user_battle_state(bid);
-        usleep(GLOBAL_SPEED);
-        move_bullets(bid);
-        check_who_is_shooted(bid);
-        check_who_is_dead(bid);
-        inform_all_user_battle_state(bid);
-        usleep(GLOBAL_SPEED);
-
-        move_bullets(bid);
-        check_who_get_blood_vial(bid);
-        check_who_traped_in_magma(bid);
-        check_who_got_charger(bid);
-        check_who_is_shooted(bid);
-        check_who_is_dead(bid);
         check_item_count(bid);
-
         random_generate_items(bid);
-
-        inform_all_user_battle_state(bid);
         usleep(GLOBAL_SPEED);
     }
     return NULL;
@@ -994,6 +943,7 @@ int client_command_move_up(int uid) {
     battles[bid].users[uid].dir = DIR_UP;
     if (battles[bid].users[uid].pos.y > 0) {
         battles[bid].users[uid].pos.y--;
+        check_user_status(uid);
     }
     return 0;
 }
@@ -1004,6 +954,7 @@ int client_command_move_down(int uid) {
     battles[bid].users[uid].dir = DIR_DOWN;
     if (battles[bid].users[uid].pos.y < BATTLE_H - 1) {
         battles[bid].users[uid].pos.y++;
+        check_user_status(uid);
     }
     return 0;
 }
@@ -1014,6 +965,7 @@ int client_command_move_left(int uid) {
     battles[bid].users[uid].dir = DIR_LEFT;
     if (battles[bid].users[uid].pos.x > 0) {
         battles[bid].users[uid].pos.x--;
+        check_user_status(uid);
     }
     return 0;
 }
@@ -1024,6 +976,7 @@ int client_command_move_right(int uid) {
     battles[bid].users[uid].dir = DIR_RIGHT;
     if (battles[bid].users[uid].pos.x < BATTLE_W - 1) {
         battles[bid].users[uid].pos.x++;
+        check_user_status(uid);
     }
     return 0;
 }
