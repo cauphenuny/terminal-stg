@@ -8,8 +8,7 @@
   ```
 * run  
   1. run `./server` in one terminal
-  2. run `./client [server_ip]` in another terminal, example: `./client 172.45.33.101`
-  3. you are admin when you both run `./server`and `./client` without ip
+  2. run `./client [server_ip]` in another terminal
 
 * instructions  
   forked from [this repository](https://github.com/wierton/socket-based-naive-game)
@@ -31,11 +30,7 @@
   4. operations in battle
     * w s a d can move around
 	* k j h l can fire
-    * K J H L can aoe fire
   5. quit the battle
     * note that even you die, you won't be quited from the battle
 	but your role will be changed from player into witness. If you
 	want to return the last ui, you need to type `q`.
-
-* update log
-  see update.txt
