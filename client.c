@@ -1,4 +1,3 @@
-
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <pthread.h>
@@ -64,12 +63,18 @@ void flip_screen();
 
 void show_cursor();
 
+void set_cursor(uint32_t x, uint32_t y);
+
+int main_ui();
+
+int private_ui();
+
 struct catalog_t {
     pos_t pos;
     const char* title;
     char records[USER_CNT][USERNAME_SIZE];
 } friend_list = {
-    {34, 1},
+    {48, 1},
     "online friends",
 };
 
@@ -180,13 +185,17 @@ void send_command(int command) {
 
 /* all buttons */
 enum {
-    buttonLogin = 0,
-    buttonRegister = 1,
-    buttonQuitGame = 2,
-    buttonLaunchBattle = 3,
-    buttonInviteUser = 4,
-    buttonJoinBattle = 5,
-    buttonLogout = 6,
+    buttonLogin,
+    buttonRegister,
+    buttonQuitGame,
+    buttonPrivate,
+    buttonFFA,
+    buttonRanklist,
+    buttonLogout,
+    buttonLaunchBattle,
+    buttonInviteUser,
+    buttonJoinBattle,
+    buttonQuitPrivate,
 };
 
 int button_login() {
@@ -303,6 +312,11 @@ int button_join_battle() {
     return 0;
 }
 
+int button_quit_private() {
+    wlog("call button handler %s\n", __func__);
+    return -1;
+}
+
 int button_logout() {
     wlog("call button handler %s\n", __func__);
     user_name = "<unknown>";
@@ -310,6 +324,31 @@ int button_logout() {
     send_command(CLIENT_COMMAND_USER_LOGOUT);
     bottom_bar_output(0, "logout");
     return -1;
+}
+
+int button_ranklist() {
+    bottom_bar_output(0, "logout");
+    wlog("call button handler %s\n", __func__);
+    flip_screen();
+    set_cursor(0, 0);
+    puts("咕咕咕");
+    fgetc(stdin);
+    return 0;
+    return -1;
+}
+
+int button_private_battle() {
+    wlog("call button handler %s\n", __func__);
+    return private_ui();
+}
+
+int button_ffa() {
+    wlog("call button handler %s\n", __func__);
+    flip_screen();
+    set_cursor(0, 0);
+    puts("咕咕咕");
+    fgetc(stdin);
+    return 0;
 }
 
 /* button position and handler */
@@ -324,37 +363,55 @@ struct button_t {
         button_login,
     },
     [buttonRegister] = {
-        {24, 7},
+        {24, 9},
         "register",
         button_register,
     },
     [buttonQuitGame] = {
-        {24, 11},
+        {24, 15},
         "  quit  ",
         button_quit_game,
     },
+    [buttonPrivate] = {
+        {10, 1},
+        "private room",
+        button_private_battle,
+    },
+    [buttonFFA] = {
+        {10, 6},
+        "free for all",
+        button_ffa,
+    },
+    [buttonRanklist] = {
+        {10, 11},
+        "  ranklist  ",
+        button_ranklist,
+    },
+    [buttonLogout] = {
+        {10, 16},
+        "   logout   ",
+        button_logout,
+    },
     [buttonLaunchBattle] = {
-        {7, 1},
+        {10, 1},
         "launch battle",
         button_launch_battle,
     },
     [buttonInviteUser] = {
-        {7, 5},
+        {10, 6},
         " invite user ",
         button_invite_user,
     },
     [buttonJoinBattle] = {
-        {7, 9},
+        {10, 11},
         "accept battle",
         button_join_battle,
     },
-    [buttonLogout] = {
-        {7, 13},
-        "    logout   ",
-        button_logout,
+    [buttonQuitPrivate] = {
+        {10, 16},
+        "  back home  ",
+        button_quit_private,
     },
-
-    // [buttonQuitBattle]   = {{7, 11},   "quit battle"},
 };
 
 void wrap_get_term_attr(struct termio* ptbuf) {
@@ -538,7 +595,7 @@ void write_log(const char* format, ...) {
 
 void display_user_state() {
     assert(user_state <= sizeof(user_state_s) / sizeof(user_state_s[0]));
-    bottom_bar_output(-1, "name: %s  HP: %d  bullets: %d  state: %s", user_name, user_hp, user_bullets, user_state_s[user_state]);
+    bottom_bar_output(-1, "name: %s  HP: %d  energy: %d  state: %s", user_name, user_hp, user_bullets, user_state_s[user_state]);
 }
 
 void server_say(const char* message) {
@@ -582,8 +639,8 @@ void resume_and_exit(int status) {
     show_cursor();
     send_command(CLIENT_COMMAND_USER_QUIT);
     wrap_set_term_attr(&raw_termio);
-    set_cursor(0, SCR_H);
     close(client_fd);
+    //set_cursor(0, SCR_H);
     wlog("====================EXIT====================\n\n\n");
     exit(status);
 }
@@ -717,6 +774,11 @@ void flip_screen() {
     unlock_cursor();
 }
 
+void clear_screen() {
+    printf("\033[2J");
+    set_cursor(0, 0);
+}
+
 void draw_button(uint32_t button_id) {
     int x = buttons[button_id].pos.x;
     int y = buttons[button_id].pos.y;
@@ -844,11 +906,14 @@ void run_battle() {
             case 's': send_command(CLIENT_COMMAND_MOVE_DOWN); break;
             case 'a': send_command(CLIENT_COMMAND_MOVE_LEFT); break;
             case 'd': send_command(CLIENT_COMMAND_MOVE_RIGHT); break;
-            case ' ': send_command(CLIENT_COMMAND_FIRE); break;
             case 'k': send_command(CLIENT_COMMAND_FIRE_UP); break;
             case 'j': send_command(CLIENT_COMMAND_FIRE_DOWN); break;
             case 'h': send_command(CLIENT_COMMAND_FIRE_LEFT); break;
             case 'l': send_command(CLIENT_COMMAND_FIRE_RIGHT); break;
+            case 'K': send_command(CLIENT_COMMAND_FIRE_AOE_UP); break;
+            case 'J': send_command(CLIENT_COMMAND_FIRE_AOE_DOWN); break;
+            case 'H': send_command(CLIENT_COMMAND_FIRE_AOE_LEFT); break;
+            case 'L': send_command(CLIENT_COMMAND_FIRE_AOE_RIGHT); break;
         }
     }
 
@@ -912,20 +977,54 @@ int switch_selected_button_respond_to_key(int st, int ed) {
     return sel;
 }
 
-void draw_button_in_main_ui() {
+void draw_button_in_private_ui() {
     draw_button(buttonLaunchBattle);
     draw_button(buttonInviteUser);
     draw_button(buttonJoinBattle);
+    draw_button(buttonQuitPrivate);
+    draw_catalog(&friend_list);
+}
+
+int private_ui() {
+    flip_screen();
+    while (1) {
+        draw_button_in_private_ui();
+        display_user_state();
+        int sel = switch_selected_button_respond_to_key(buttonLaunchBattle, buttonQuitPrivate + 1);
+        wlog("user select %d\n", sel);
+
+        int ret_code = buttons[sel].button_func();
+        wlog("button handler return %d\n", ret_code);
+
+        if (ret_code < 0 || user_state == USER_STATE_NOT_LOGIN) {
+            flip_screen();
+            wlog("quit private ui with user_state:%d\n", user_state);
+            break;
+        }
+
+        if (user_state == USER_STATE_BATTLE) {
+            wlog("enter battle mode\n");
+            run_battle();
+        }
+    }
+    return 0;
+}
+
+void draw_button_in_main_ui() {
+    draw_button(buttonPrivate);
+    draw_button(buttonFFA);
+    draw_button(buttonRanklist);
     draw_button(buttonLogout);
     draw_catalog(&friend_list);
 }
 
-void main_ui() {
+int main_ui() {
     flip_screen();
     while (1) {
+        flip_screen();
         draw_button_in_main_ui();
         display_user_state();
-        int sel = switch_selected_button_respond_to_key(3, 7);
+        int sel = switch_selected_button_respond_to_key(buttonPrivate, buttonLogout + 1);
         wlog("user select %d\n", sel);
 
         int ret_code = buttons[sel].button_func();
@@ -936,12 +1035,8 @@ void main_ui() {
             wlog("quit main ui with user_state:%d\n", user_state);
             break;
         }
-
-        if (user_state == USER_STATE_BATTLE) {
-            wlog("enter battle mode\n");
-            run_battle();
-        }
     }
+    return 0;
 }
 
 void draw_button_in_start_ui() {
@@ -956,7 +1051,7 @@ void start_ui() {
     while (1) {
         draw_button_in_start_ui();
         display_user_state();
-        int sel = switch_selected_button_respond_to_key(0, 3);
+        int sel = switch_selected_button_respond_to_key(buttonLogin, buttonQuitGame + 1);
         wlog("user select %d@%s\n", sel, buttons[sel].s);
         buttons[sel].button_func();
 
@@ -970,7 +1065,7 @@ void start_ui() {
 
 int serv_quit(server_message_t* psm) {
     wlog("call message handler %s\n", __func__);
-    system("clear");
+    clear_screen();
     puts("forced terminated by server.\033[?25h" NONE);
     resume_and_exit(1);
     return 0;
@@ -978,7 +1073,7 @@ int serv_quit(server_message_t* psm) {
 
 int serv_fatal(server_message_t* psm) {
     wlog("call message handler %s\n", __func__);
-    system("clear");
+    clear_screen();
     puts("forced terminated by a user.\033[?25h" NONE);
     resume_and_exit(3);
     return 0;
@@ -1332,7 +1427,7 @@ int server_message_you_got_magazine(server_message_t* psm) {
 
 int server_message_your_magazine_is_empty(server_message_t* psm) {
     wlog("call message handler %s\n", __func__);
-    server_say("your charger is empty");
+    server_say("your energy is not enough");
     return 0;
 }
 
@@ -1408,8 +1503,9 @@ void start_message_monitor() {
 }
 
 void terminate(int signum) {
-    system("clear");
-    log("received signal %s, terminate.\033[?25h", signal_name_s[signum]);
+    clear_screen();
+    set_cursor(0, 0);
+    printf("received signal %s, terminate.\033[?25h\n", signal_name_s[signum]);
     resume_and_exit(signum);
 }
 
@@ -1418,29 +1514,29 @@ int main(int argc, char* argv[]) {
         remove(log_file);
     }
     if (argc >= 2) {
-        server_addr = (char*)malloc(256);
+        server_addr = (char*)malloc(IPADDR_SIZE);
         strcpy(server_addr, argv[1]);
         if (argc >= 3) {
             port = atoi(argv[2]);
         }
     } else {
-        server_addr = (char*)malloc(256);
+        server_addr = (char*)malloc(IPADDR_SIZE);
         strcpy(server_addr, "127.0.0.1");
     }
     wlog("====================START====================\n");
     log("client " VERSION "\n");
     client_fd = connect_to_server();
     if (signal(SIGSEGV, terminate) == SIG_ERR) {
-        log("failed to set signal");
+        wlog("failed to set signal sigsegv");
     }
     if (signal(SIGINT, terminate) == SIG_ERR) {
-        log("failed to set signal");
+        wlog("failed to set signal sigint");
     }
     if (signal(SIGABRT, terminate) == SIG_ERR) {
-        log("failed to set signal");
+        wlog("failed to set signal sigabrt");
     }
 
-    system("clear");
+    flip_screen();
     init_scr_wh();
     wrap_get_term_attr(&raw_termio);
     hide_cursor();

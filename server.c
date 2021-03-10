@@ -1,14 +1,15 @@
-
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
 #include <arpa/inet.h>
+#include <netinet/in.h>
 #include <pthread.h>
-#include <string.h>
-#include <time.h>
 #include <signal.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <time.h>
+#include <math.h>
 
 #include "common.h"
+#include "func.h"
 
 #define REGISTERED_USER_LIST_SIZE 100
 
@@ -23,11 +24,11 @@ int server_fd = 0, port = 50000, port_range = 100;
 
 int usleep(int usec);
 
-void wrap_recv(int conn, client_message_t *pcm);
-void wrap_send(int conn, server_message_t *psm);
+void wrap_recv(int conn, client_message_t* pcm);
+void wrap_send(int conn, server_message_t* psm);
 
 void send_to_client(int uid, int message);
-void send_to_client_with_username(int uid, int message, char *user_name);
+void send_to_client_with_username(int uid, int message, char* user_name);
 void close_session(int conn, int message);
 
 void terminate_process(int recved_signal);
@@ -41,12 +42,21 @@ struct {
 
 struct session_t {
     char user_name[USERNAME_SIZE];
+    char ip_addr[IPADDR_SIZE];
     int conn;
-    int state;           // not login, login, battle
+    int state;  // not login, login, battle
+    int is_admin;
     uint32_t bid;
     uint32_t inviter_id;
     client_message_t cm;
 } sessions[USER_CNT];
+
+struct session_args_t {
+    int conn;
+    char ip_addr[IPADDR_SIZE];
+};
+
+typedef struct session_args_t session_args_t;
 
 struct battle_t {
     int is_alloced;
@@ -60,7 +70,7 @@ struct battle_t {
         pos_t last_pos;
     } users[USER_CNT];
 
-    int num_of_other; // number of other alloced item except for bullet
+    int num_of_other;  // number of other alloced item except for bullet
     int item_count;
 
     struct {
@@ -77,15 +87,15 @@ struct battle_t {
 } battles[USER_CNT];
 
 void load_user_list() {
-    FILE *userlist = fopen(REGISTERED_USER_FILE, "r");
+    FILE* userlist = fopen(REGISTERED_USER_FILE, "r");
     if (userlist == NULL) {
         log("can not find " REGISTERED_USER_FILE "\n");
         return;
     }
-    #define LOAD_FAIL \
-    log("failed to load users, try to delete " REGISTERED_USER_FILE ".\n"), \
-    user_list_size = 0, memset(registered_user_list, 0, sizeof(registered_user_list)),\
-    fclose(userlist);
+#define LOAD_FAIL                                                                          \
+    log("failed to load users, try to delete " REGISTERED_USER_FILE ".\n"),                \
+        user_list_size = 0, memset(registered_user_list, 0, sizeof(registered_user_list)), \
+        fclose(userlist);
     for (int i = 0; i < REGISTERED_USER_LIST_SIZE; i++) {
         if (fgets(registered_user_list[i].user_name, USERNAME_SIZE, userlist) != NULL) {
             registered_user_list[i].user_name[strlen(registered_user_list[i].user_name) - 1] = 0;
@@ -99,18 +109,21 @@ void load_user_list() {
         } else {
             break;
         }
-        if (fgets(registered_user_list[i].password, PASSWORD_SIZE, userlist) == NULL) { LOAD_FAIL; return; }
+        if (fgets(registered_user_list[i].password, PASSWORD_SIZE, userlist) == NULL) {
+            LOAD_FAIL;
+            return;
+        }
         registered_user_list[i].password[strlen(registered_user_list[i].password) - 1] = 0;
     }
-    #undef LOAD_FAIL
-    for (int i = 0; i < user_list_size; i++) {
-        log("loaded user `%s`\n", registered_user_list[i].user_name);
-    }
+#undef LOAD_FAIL
+    //for (int i = 0; i < user_list_size; i++) {
+    //    log("loaded user %s\n", registered_user_list[i].user_name);
+    //}
     log("loaded %d users from " REGISTERED_USER_FILE ".\n", user_list_size);
     fclose(userlist);
 }
 void save_user_list() {
-    FILE *userlist = fopen(REGISTERED_USER_FILE, "w");
+    FILE* userlist = fopen(REGISTERED_USER_FILE, "w");
     for (int i = 0; i < user_list_size; i++) {
         fprintf(userlist, "%s\n", registered_user_list[i].user_name);
         fprintf(userlist, "%s\n", registered_user_list[i].password);
@@ -119,17 +132,17 @@ void save_user_list() {
 }
 
 void save_user(int i) {
-    FILE *userlist = fopen(REGISTERED_USER_FILE, "a");
+    FILE* userlist = fopen(REGISTERED_USER_FILE, "a");
     fprintf(userlist, "%s\n", registered_user_list[i].user_name);
     fprintf(userlist, "%s\n", registered_user_list[i].password);
-    log("saved users `%s` to " REGISTERED_USER_FILE ".\n", registered_user_list[i].user_name);
+    log("saved users %s to " REGISTERED_USER_FILE ".\n", registered_user_list[i].user_name);
 }
 
 int query_session_built(uint32_t uid) {
     assert(uid < USER_CNT);
 
     if (sessions[uid].state == USER_STATE_UNUSED
-    || sessions[uid].state == USER_STATE_NOT_LOGIN) {
+        || sessions[uid].state == USER_STATE_NOT_LOGIN) {
         return false;
     } else {
         return true;
@@ -139,8 +152,8 @@ int query_session_built(uint32_t uid) {
 void user_quit_battle(uint32_t bid, uint32_t uid) {
     assert(bid < USER_CNT && uid < USER_CNT);
 
-    log("user %s quit from battle %d(%ld users)\n", sessions[uid].user_name, bid, battles[bid].nr_users);
-    battles[bid].nr_users --;
+    log("user %s@[%s] quit from battle %d(%ld users)\n", sessions[uid].user_name, sessions[uid].ip_addr, bid, battles[bid].nr_users);
+    battles[bid].nr_users--;
     battles[bid].users[uid].battle_state = BATTLE_STATE_UNJOINED;
     sessions[uid].state = USER_STATE_LOGIN;
 
@@ -165,10 +178,10 @@ void user_quit_battle(uint32_t bid, uint32_t uid) {
 void user_join_battle_common_part(uint32_t bid, uint32_t uid, uint32_t joined_state) {
     assert(bid < USER_CNT && uid < USER_CNT);
 
-    log("user %s join in battle %d(%ld users)\n", sessions[uid].user_name, bid, battles[bid].nr_users);
+    log("user %s@[%s] join in battle %d(%ld users)\n", sessions[uid].user_name, sessions[uid].ip_addr, bid, battles[bid].nr_users);
 
     if (joined_state == USER_STATE_BATTLE) {
-        battles[bid].nr_users ++;
+        battles[bid].nr_users++;
         battles[bid].users[uid].battle_state = BATTLE_STATE_LIVE;
     } else if (joined_state == USER_STATE_WAIT_TO_BATTLE) {
         battles[bid].users[uid].battle_state = BATTLE_STATE_UNJOINED;
@@ -188,8 +201,8 @@ void user_join_battle(uint32_t bid, uint32_t uid) {
     int uy = (rand() & 0x7FFF) % BATTLE_H;
     battles[bid].users[uid].pos.x = ux;
     battles[bid].users[uid].pos.y = uy;
-    log("alloc position (%hhu, %hhu) for launcher #%d@%s\n",
-            ux, uy, uid, sessions[uid].user_name);
+    log("alloc position (%hhu, %hhu) for launcher ##%d %s@[%s]\n",
+        ux, uy, uid, sessions[uid].user_name, sessions[uid].ip_addr);
 
     sessions[uid].state = USER_STATE_BATTLE;
 
@@ -200,8 +213,9 @@ void user_join_battle(uint32_t bid, uint32_t uid) {
 
 void user_invited_to_join_battle(uint32_t bid, uint32_t uid) {
     if (sessions[uid].state == USER_STATE_WAIT_TO_BATTLE
-    && bid != sessions[uid].bid) {
-        log("user %d@%s rejects old battle #%d since he was invited to a new battle\n", uid, sessions[uid].user_name, sessions[uid].bid);
+        && bid != sessions[uid].bid) {
+        log("user #%d %s@[%s] rejects old battle #%d since he was invited to a new battle\n",
+            uid, sessions[uid].user_name, sessions[uid].ip_addr, sessions[uid].bid);
 
         send_to_client_with_username(sessions[uid].inviter_id, SERVER_MESSAGE_FRIEND_REJECT_BATTLE, sessions[uid].user_name);
     }
@@ -209,9 +223,9 @@ void user_invited_to_join_battle(uint32_t bid, uint32_t uid) {
     user_join_battle_common_part(bid, uid, USER_STATE_WAIT_TO_BATTLE);
 }
 
-int find_uid_by_user_name(const char *user_name) {
+int find_uid_by_user_name(const char* user_name) {
     int ret_uid = -1;
-    log("find user '%s'\n", user_name);
+    log("find user %s\n", user_name);
     for (int i = 0; i < USER_CNT; i++) {
         if (query_session_built(i)) {
             if (strncmp(user_name, sessions[i].user_name, USERNAME_SIZE - 1) == 0) {
@@ -224,7 +238,7 @@ int find_uid_by_user_name(const char *user_name) {
     if (ret_uid == -1) {
         logi("fail\n");
     } else {
-        logi("found: %d@%s\n", ret_uid, sessions[ret_uid].user_name);
+        logi("found: #%d %s@[%s]\n", ret_uid, sessions[ret_uid].user_name, sessions[ret_uid].ip_addr);
     }
 
     return ret_uid;
@@ -273,7 +287,7 @@ int get_unused_session() {
 
 void inform_friends(int uid, int message) {
     server_message_t sm;
-    char *user_name = sessions[uid].user_name;
+    char* user_name = sessions[uid].user_name;
     memset(&sm, 0, sizeof(server_message_t));
     sm.message = message;
     for (int i = 0; i < USER_CNT; i++) {
@@ -300,26 +314,24 @@ int get_unused_item(int bid) {
 
 void random_generate_items(int bid) {
     int random_kind, item_id;
-    if (battles[bid].item_count <= 7) {
-        random_kind = 3, item_id = get_unused_item(bid);
+    if (battles[bid].item_count <= INIT_GRASS) {
+        random_kind = ITEM_GRASS, item_id = get_unused_item(bid);
         if (item_id == -1) return;
     } else {
-        if (rand() % 200 > 2) return;
+        if (!probability(1, 50)) return;
         if (battles[bid].num_of_other >= MAX_OTHER) return;
         item_id = get_unused_item(bid);
         if (item_id == -1) return;
         random_kind = rand() % (ITEM_END - 1) + 1;
-        if (rand() % 3 != 0 && random_kind == 2) random_kind = 1;
-        if (rand() % 2 != 0 && random_kind == 4) random_kind = 1;
     }
     battles[bid].item_count++;
     battles[bid].items[item_id].kind = random_kind;
     battles[bid].items[item_id].pos.x = (rand() & 0x7FFF) % BATTLE_W;
     battles[bid].items[item_id].pos.y = (rand() & 0x7FFF) % BATTLE_H;
     log("new item: #%dk%d(%d,%d)\n", item_id,
-            battles[bid].items[item_id].kind,
-            battles[bid].items[item_id].pos.x,
-            battles[bid].items[item_id].pos.y);
+        battles[bid].items[item_id].kind,
+        battles[bid].items[item_id].pos.x,
+        battles[bid].items[item_id].pos.y);
     if (random_kind == ITEM_MAGMA) {
         battles[bid].items[item_id].times = MAGMA_INIT_TIMES;
     }
@@ -328,18 +340,18 @@ void random_generate_items(int bid) {
 void move_bullets(int bid) {
     for (int i = 0; i < MAX_ITEM; i++) {
         if (battles[bid].items[i].is_used == false
-        || battles[bid].items[i].kind != ITEM_BULLET)
+            || battles[bid].items[i].kind != ITEM_BULLET)
             continue;
-        uint8_t *px = &(battles[bid].items[i].pos.x);
-        uint8_t *py = &(battles[bid].items[i].pos.y);
+        uint8_t* px = &(battles[bid].items[i].pos.x);
+        uint8_t* py = &(battles[bid].items[i].pos.y);
 
         // log("try to move bullet %d with dir %d\n", i, battles[bid].items[i].dir);
 
-        switch(battles[bid].items[i].dir) {
-            case DIR_UP:    (*py)--;break;
-            case DIR_DOWN:    (*py)++;break;
-            case DIR_LEFT:    (*px)--;break;
-            case DIR_RIGHT:    (*px)++;break;
+        switch (battles[bid].items[i].dir) {
+            case DIR_UP: (*py)--; break;
+            case DIR_DOWN: (*py)++; break;
+            case DIR_LEFT: (*px)--; break;
+            case DIR_RIGHT: (*px)++; break;
         }
 
         if (*px >= BATTLE_W || *py >= BATTLE_H) {
@@ -352,7 +364,7 @@ void move_bullets(int bid) {
 void check_who_get_blood_vial(int bid) {
     for (int i = 0; i < MAX_ITEM; i++) {
         if (battles[bid].items[i].is_used == false
-        || battles[bid].items[i].kind != ITEM_BLOOD_VIAL)
+            || battles[bid].items[i].kind != ITEM_BLOOD_VIAL)
             continue;
 
         int ix = battles[bid].items[i].pos.x;
@@ -366,14 +378,14 @@ void check_who_get_blood_vial(int bid) {
 
             if (ix == ux && iy == uy) {
                 battles[bid].users[j].life += LIFE_PER_VIAL;
-                log("user %d@%s got blood vial\n", j, sessions[j].user_name);
+                log("user #%d %s@[%s] got blood vial\n", j, sessions[j].user_name, sessions[j].ip_addr);
                 if (battles[bid].users[j].life > MAX_LIFE) {
-                    log("user %d@%s life exceeds max value\n", j, sessions[j].user_name);
+                    log("user #%d %s@[%s] life exceeds max value\n", j, sessions[j].user_name, sessions[j].ip_addr);
                     battles[bid].users[j].life = MAX_LIFE;
                 }
 
                 battles[bid].items[i].is_used = false;
-                battles[bid].num_of_other --;
+                battles[bid].num_of_other--;
                 send_to_client(j, SERVER_MESSAGE_YOU_GOT_BLOOD_VIAL);
                 break;
             }
@@ -384,7 +396,7 @@ void check_who_get_blood_vial(int bid) {
 void check_who_traped_in_magma(int bid) {
     for (int i = 0; i < MAX_ITEM; i++) {
         if (battles[bid].items[i].is_used == false
-        || battles[bid].items[i].kind != ITEM_MAGMA)
+            || battles[bid].items[i].kind != ITEM_MAGMA)
             continue;
 
         int ix = battles[bid].items[i].pos.x;
@@ -397,14 +409,14 @@ void check_who_traped_in_magma(int bid) {
             int uy = battles[bid].users[j].pos.y;
 
             if (ix == ux && iy == uy) {
-                battles[bid].users[j].life --;
-                battles[bid].items[i].times --;
-                log("user %d@%s is trapped in magma\n", j, sessions[j].user_name);
+                battles[bid].users[j].life--;
+                battles[bid].items[i].times--;
+                log("user #%d %s@[%s] is trapped in magma\n", j, sessions[j].user_name, sessions[j].ip_addr);
                 send_to_client(j, SERVER_MESSAGE_YOU_ARE_TRAPPED_IN_MAGMA);
                 if (battles[bid].items[i].times <= 0) {
                     log("magma %d is exhausted\n", i);
                     battles[bid].items[i].is_used = false;
-                    battles[bid].num_of_other --;
+                    battles[bid].num_of_other--;
                 }
                 break;
             }
@@ -415,7 +427,7 @@ void check_who_traped_in_magma(int bid) {
 void check_who_got_charger(int bid) {
     for (int i = 0; i < MAX_ITEM; i++) {
         if (battles[bid].items[i].is_used == false
-        || battles[bid].items[i].kind != ITEM_MAGAZINE)
+            || battles[bid].items[i].kind != ITEM_MAGAZINE)
             continue;
 
         int ix = battles[bid].items[i].pos.x;
@@ -429,9 +441,9 @@ void check_who_got_charger(int bid) {
 
             if (ix == ux && iy == uy) {
                 battles[bid].users[j].nr_bullets += BULLETS_PER_MAGAZINE;
-                log("user %d@%s is got magazine\n", j, sessions[j].user_name);
+                log("user #%d %s@[%s] is got magazine\n", j, sessions[j].user_name, sessions[j].ip_addr);
                 if (battles[bid].users[j].nr_bullets > MAX_BULLETS) {
-                    log("user %d@%s's bullets exceeds max value\n", j, sessions[j].user_name);
+                    log("user #%d %s@[%s] 's bullets exceeds max value\n", j, sessions[j].user_name, sessions[j].ip_addr);
                     battles[bid].users[j].nr_bullets = MAX_BULLETS;
                 }
 
@@ -446,7 +458,7 @@ void check_who_got_charger(int bid) {
 void check_who_is_shooted(int bid) {
     for (int i = 0; i < MAX_ITEM; i++) {
         if (battles[bid].items[i].is_used == false
-        || battles[bid].items[i].kind != ITEM_BULLET)
+            || battles[bid].items[i].kind != ITEM_BULLET)
             continue;
 
         int ix = battles[bid].items[i].pos.x;
@@ -459,9 +471,9 @@ void check_who_is_shooted(int bid) {
             int uy = battles[bid].users[j].pos.y;
 
             if (ix == ux && iy == uy
-            && battles[bid].items[i].owner != j) {
-                battles[bid].users[j].life --;
-                log("user %d@%s is shooted\n", j, sessions[j].user_name);
+                && battles[bid].items[i].owner != j) {
+                battles[bid].users[j].life--;
+                log("user #%d %s@[%s] is shooted\n", j, sessions[j].user_name, sessions[j].ip_addr);
                 send_to_client(j, SERVER_MESSAGE_YOU_ARE_SHOOTED);
                 battles[bid].items[i].is_used = false;
                 break;
@@ -473,12 +485,12 @@ void check_who_is_shooted(int bid) {
 void check_who_is_dead(int bid) {
     for (int i = 0; i < USER_CNT; i++) {
         if (battles[bid].users[i].battle_state == BATTLE_STATE_LIVE
-        && battles[bid].users[i].life <= 0) {
-            log("user %d@%s is dead\n", i, sessions[i].user_name);
+            && battles[bid].users[i].life <= 0) {
+            log("user #%d %s@[%s] is dead\n", i, sessions[i].user_name, sessions[i].ip_addr);
             battles[bid].users[i].battle_state = BATTLE_STATE_DEAD;
-            log("send dead info to user %d@%s\n", i, sessions[i].user_name);
+            log("send dead info to user #%d %s@[%s]\n", i, sessions[i].user_name, sessions[i].ip_addr);
             send_to_client(i, SERVER_MESSAGE_YOU_ARE_DEAD);
-        } else if (battles[bid].users[i].battle_state == BATTLE_STATE_DEAD){
+        } else if (battles[bid].users[i].battle_state == BATTLE_STATE_DEAD) {
             battles[bid].users[i].battle_state = BATTLE_STATE_WITNESS;
         }
     }
@@ -517,10 +529,10 @@ void inform_all_user_battle_state(int bid) {
     }
 }
 
-void *battle_ruler(void *args) {
+void* battle_ruler(void* args) {
     int bid = (int)(uintptr_t)args;
     log("battle ruler for battle #%d\n", bid);
-    // FIXME: battle re-alloced before exiting loop 
+    // FIXME: battle re-alloced before exiting loop
     while (battles[bid].is_alloced) {
         move_bullets(bid);
         check_who_is_shooted(bid);
@@ -545,7 +557,7 @@ void *battle_ruler(void *args) {
         check_who_got_charger(bid);
         check_who_is_shooted(bid);
         check_who_is_dead(bid);
-        
+
         random_generate_items(bid);
 
         inform_all_user_battle_state(bid);
@@ -554,20 +566,20 @@ void *battle_ruler(void *args) {
     return NULL;
 }
 
-int check_user_registered(char *user_name, char *password) {
+int check_user_registered(char* user_name, char* password) {
     for (int i = 0; i < REGISTERED_USER_LIST_SIZE; i++) {
         if (strncmp(user_name, registered_user_list[i].user_name, USERNAME_SIZE - 1) != 0)
             continue;
 
         if (strncmp(password, registered_user_list[i].password, PASSWORD_SIZE - 1) != 0) {
-            logi("user name '%s' sent error password\n", user_name);
+            logi("user name %s sent error password\n", user_name);
             return SERVER_RESPONSE_LOGIN_FAIL_ERROR_PASSWORD;
         } else {
             return SERVER_RESPONSE_LOGIN_SUCCESS;
         }
     }
 
-    logi("user name '%s' hasn't been registered\n", user_name);
+    logi("user name %s hasn't been registered\n", user_name);
     return SERVER_RESPONSE_LOGIN_FAIL_UNREGISTERED_USERID;
 }
 
@@ -575,37 +587,37 @@ void launch_battle(int bid) {
     pthread_t thread;
 
     log("try to create battle_ruler thread\n");
-    if (pthread_create(&thread, NULL, battle_ruler, (void *)(uintptr_t)bid) == -1) {
+    if (pthread_create(&thread, NULL, battle_ruler, (void*)(uintptr_t)bid) == -1) {
         eprintf("fail to launch battle\n");
     }
 }
 
 int client_command_user_register(int uid) {
     int ul_index = -1;
-    char *user_name = sessions[uid].cm.user_name;
-    char *password = sessions[uid].cm.password;
-    log("user '%s' tries to register with password '%s'\n", user_name, password);
+    char* user_name = sessions[uid].cm.user_name;
+    char* password = sessions[uid].cm.password;
+    log("user %s tries to register with password %s\n", user_name, password);
 
     for (int i = 0; i < REGISTERED_USER_LIST_SIZE; i++) {
         if (strncmp(user_name, registered_user_list[i].user_name, USERNAME_SIZE - 1) != 0)
             continue;
 
-        log("user '%s'&'%s' has been registered\n", user_name, password);
+        log("user %s&%s has been registered\n", user_name, password);
         send_to_client(uid, SERVER_RESPONSE_YOU_HAVE_REGISTERED);
         return 0;
     }
 
     pthread_mutex_lock(&userlist_lock);
     if (user_list_size < REGISTERED_USER_LIST_SIZE)
-        ul_index = user_list_size ++;
+        ul_index = user_list_size++;
     pthread_mutex_unlock(&userlist_lock);
 
     log("fetch empty user list index #%d\n", ul_index);
     if (ul_index == -1) {
-        log("user '%s' registers fail\n", user_name);
+        log("user %s registers fail\n", user_name);
         send_to_client(uid, SERVER_RESPONSE_REGISTER_FAIL);
     } else {
-        log("user '%s' registers success\n", user_name);
+        log("user %s registers success\n", user_name);
         strncpy(registered_user_list[ul_index].user_name,
                 user_name, USERNAME_SIZE - 1);
         strncpy(registered_user_list[ul_index].password,
@@ -618,24 +630,23 @@ int client_command_user_register(int uid) {
 
 int client_command_user_login(int uid) {
     int is_dup = 0;
-    client_message_t *pcm = &sessions[uid].cm;
-    char *user_name = pcm->user_name;
-    char *password = pcm->password;
-    log("user '%s' try to login\n", user_name);
+    client_message_t* pcm = &sessions[uid].cm;
+    char* user_name = pcm->user_name;
+    char* password = pcm->password;
+    log("user %s try to login\n", user_name);
     int message = check_user_registered(user_name, password);
 
     if (query_session_built(uid)) {
-        log("user '%s' has logined\n", sessions[uid].user_name);
+        log("user %s  [%s] has logined\n", sessions[uid].user_name, sessions[uid].ip_addr);
         send_to_client(uid, SERVER_RESPONSE_YOU_HAVE_LOGINED);
         return 0;
     }
 
-
     for (int i = 0; i < USER_CNT; i++) {
         if (query_session_built(i)) {
-            logi("check dup user id: '%s' vs. '%s'\n", user_name, sessions[i].user_name);
+            logi("check dup user id: %s vs. %s\n", user_name, sessions[i].user_name);
             if (strncmp(user_name, sessions[i].user_name, USERNAME_SIZE - 1) == 0) {
-                log("user %d@%s duplicate with %dth user '%s'\n", uid, user_name, i, sessions[i].user_name);
+                log("user #%d %s duplicate with %dth user %s@[%s]\n", uid, user_name, i, sessions[i].user_name, sessions[i].ip_addr);
                 is_dup = 1;
                 break;
             }
@@ -647,8 +658,8 @@ int client_command_user_login(int uid) {
         log("send fail dup id message to client.\n");
         send_to_client(uid, SERVER_RESPONSE_LOGIN_FAIL_DUP_USERID);
         sessions[uid].state = USER_STATE_NOT_LOGIN;
-    } else if (message == SERVER_RESPONSE_LOGIN_SUCCESS){
-        log("user '%s' login success\n", user_name);
+    } else if (message == SERVER_RESPONSE_LOGIN_SUCCESS) {
+        log("user %s login success\n", user_name);
         sessions[uid].state = USER_STATE_LOGIN;
         send_to_client(uid, SERVER_RESPONSE_LOGIN_SUCCESS);
         strncpy(sessions[uid].user_name, user_name, USERNAME_SIZE - 1);
@@ -662,22 +673,22 @@ int client_command_user_login(int uid) {
 
 int client_command_user_logout(int uid) {
     if (sessions[uid].state == USER_STATE_BATTLE
-    || sessions[uid].state == USER_STATE_WAIT_TO_BATTLE) {
-        log("user %d@%s tries to logout was in battle\n", uid, sessions[uid].user_name);
+        || sessions[uid].state == USER_STATE_WAIT_TO_BATTLE) {
+        log("user #%d %s@[%s] tries to logout was in battle\n", uid, sessions[uid].user_name, sessions[uid].ip_addr);
         user_quit_battle(sessions[uid].bid, uid);
     }
 
-    log("user %d@%s logout\n", uid, sessions[uid].user_name);
+    log("user #%d %s@[%s] logout\n", uid, sessions[uid].user_name, sessions[uid].ip_addr);
     sessions[uid].state = USER_STATE_NOT_LOGIN;
     inform_friends(uid, SERVER_MESSAGE_FRIEND_LOGOUT);
     return 0;
 }
 
-void list_all_users(server_message_t *psm) {
+void list_all_users(server_message_t* psm) {
     for (int i = 0; i < USER_CNT; i++) {
         if (query_session_built(i)) {
-            log("%s: found '%s' %s\n", __func__, sessions[i].user_name,
-                    sessions[i].state == USER_STATE_BATTLE ? "in battle" : "");
+            log("%s: found %s %s\n", __func__, sessions[i].user_name,
+                sessions[i].state == USER_STATE_BATTLE ? "in battle" : "");
             psm->all_users[i].user_state = sessions[i].state;
             strncpy(psm->all_users[i].user_name, sessions[i].user_name, USERNAME_SIZE - 1);
         }
@@ -685,11 +696,11 @@ void list_all_users(server_message_t *psm) {
 }
 
 int client_command_fetch_all_users(int uid) {
-    char *user_name = sessions[uid].user_name;
-    log("user %d@'%s' tries to fetch all users' info\n", uid, user_name);
+    char* user_name = sessions[uid].user_name;
+    log("user #%d %s@[%s] tries to fetch all users's info\n", uid, user_name, sessions[uid].user_name);
 
     if (!query_session_built(uid)) {
-        logi("user %d@'%s' who tries to list users hasn't login\n", uid, user_name);
+        logi("user #%d %s@[%s] who tries to list users hasn't login\n", uid, user_name, sessions[uid].user_name);
         send_to_client(uid, SERVER_RESPONSE_YOU_HAVE_NOT_LOGIN);
         return 0;
     }
@@ -705,11 +716,11 @@ int client_command_fetch_all_users(int uid) {
 }
 
 int client_command_fetch_all_friends(int uid) {
-    char *user_name = sessions[uid].user_name;
-    log("user %d@'%s' tries to fetch all friends' info\n", uid, user_name);
+    char* user_name = sessions[uid].user_name;
+    log("user #%d %s@[%s] tries to fetch all friends' info\n", uid, user_name, sessions[uid].ip_addr);
 
     if (!query_session_built(uid)) {
-        logi("user %d@'%s' who tries to list users hasn't login\n", uid, user_name);
+        logi("user #%d %s@[%s] who tries to list users hasn't login\n", uid, user_name, sessions[uid].ip_addr);
         send_to_client(uid, SERVER_RESPONSE_YOU_HAVE_NOT_LOGIN);
         return 0;
     }
@@ -725,24 +736,23 @@ int client_command_fetch_all_friends(int uid) {
     return 0;
 }
 
-
-int invite_friend_to_battle(int bid, int uid, char *friend_name) {
+int invite_friend_to_battle(int bid, int uid, char* friend_name) {
     int friend_id = find_uid_by_user_name(friend_name);
     if (friend_id == -1) {
         // fail to find friend
-        logi("friend '%s' hasn't login\n", friend_name);
+        logi("friend %s hasn't login\n", friend_name);
         send_to_client(uid, SERVER_MESSAGE_FRIEND_NOT_LOGIN);
-    } else if (friend_id == uid){
+    } else if (friend_id == uid) {
         logi("launch battle %d for %s\n", bid, sessions[uid].user_name);
         sessions[uid].inviter_id = uid;
         send_to_client(uid, SERVER_RESPONSE_INVITATION_SENT);
     } else if (sessions[friend_id].state == USER_STATE_BATTLE) {
         // friend already in battle
-        logi("friend '%s' already in battle\n", friend_name);
+        logi("friend %s already in battle\n", friend_name);
         send_to_client(uid, SERVER_MESSAGE_FRIEND_ALREADY_IN_BATTLE);
     } else {
         // invite friend
-        logi("friend %d@'%s' found\n", friend_id, friend_name);
+        logi("friend #%d %s found\n", friend_id, friend_name);
 
         user_invited_to_join_battle(bid, friend_id);
         // WARNING: can't move this statement
@@ -756,15 +766,15 @@ int invite_friend_to_battle(int bid, int uid, char *friend_name) {
 
 int client_command_launch_battle(int uid) {
     if (sessions[uid].state == USER_STATE_BATTLE) {
-        log("user '%s' who tries to launch battle has been in battle\n", sessions[uid].user_name);
+        log("user %s who tries to launch battle has been in battle\n", sessions[uid].user_name);
         send_to_client(uid, SERVER_RESPONSE_YOURE_ALREADY_IN_BATTLE);
         return 0;
     } else {
-        log("user '%s' tries to launch battle\n", sessions[uid].user_name);
+        log("user %s tries to launch battle\n", sessions[uid].user_name);
     }
 
     int bid = get_unalloced_battle();
-    client_message_t *pcm = &sessions[uid].cm;
+    client_message_t* pcm = &sessions[uid].cm;
 
     log("%s launch battle with %s\n", sessions[uid].user_name, pcm->user_name);
 
@@ -784,7 +794,7 @@ int client_command_launch_battle(int uid) {
 }
 
 int client_command_quit_battle(int uid) {
-    log("user %d@%s tries to quit battle\n", uid, sessions[uid].user_name);
+    log("user #%d %s@[%s] tries to quit battle\n", uid, sessions[uid].user_name, sessions[uid].ip_addr);
     if (sessions[uid].state != USER_STATE_BATTLE) {
         logi("but he hasn't join battle\n");
         send_to_client(uid, SERVER_RESPONSE_YOURE_NOT_IN_BATTLE);
@@ -796,57 +806,49 @@ int client_command_quit_battle(int uid) {
 }
 
 int client_command_invite_user(int uid) {
-    client_message_t *pcm = &sessions[uid].cm;
+    client_message_t* pcm = &sessions[uid].cm;
     int bid = sessions[uid].bid;
     int friend_id = find_uid_by_user_name(pcm->user_name);
-    log("user %d@%s tries to invite friend\n", uid, sessions[uid].user_name);
+    log("user #%d %s@[%s] tries to invite friend\n", uid, sessions[uid].user_name, sessions[uid].ip_addr);
 
     if (sessions[uid].state != USER_STATE_BATTLE) {
-        log("user %s who invites friend %s wasn't in battle\n", sessions[uid].user_name, pcm->user_name);
+        log("user %s@[%s] who invites friend %s wasn't in battle\n", sessions[uid].user_name, sessions[uid].ip_addr, pcm->user_name);
         send_to_client(uid, SERVER_RESPONSE_YOURE_NOT_IN_BATTLE);
     } else {
-        logi("invite user %s to battle #%d\n", sessions[friend_id].user_name, bid);
+        logi("invite user %s@[%s] to battle #%d\n", sessions[friend_id].user_name, sessions[uid].ip_addr, bid);
         invite_friend_to_battle(bid, uid, pcm->user_name);
     }
     return 0;
 }
 
-int client_command_send_message(int uid) 
-{
-    client_message_t *pcm = &sessions[uid].cm;
+int client_command_send_message(int uid) {
+    client_message_t* pcm = &sessions[uid].cm;
     server_message_t sm;
-    memset(&sm,0,sizeof(server_message_t));
-    sm.message=SERVER_MESSAGE_FRIEND_MESSAGE;
-    strncpy(sm.from_user,sessions[uid].user_name,USERNAME_SIZE);
-    strncpy(sm.msg,pcm->message,MSG_SIZE);
-    if (pcm->user_name[0]=='\0')
-    {
-        logi("user %d:%s yells at all users: %s\n", uid, sessions[uid].user_name, pcm->message);
+    memset(&sm, 0, sizeof(server_message_t));
+    sm.message = SERVER_MESSAGE_FRIEND_MESSAGE;
+    strncpy(sm.from_user, sessions[uid].user_name, USERNAME_SIZE);
+    strncpy(sm.msg, pcm->message, MSG_SIZE);
+    if (pcm->user_name[0] == '\0') {
+        logi("user %d:%s@[%s] yells at all users: %s\n", uid, sessions[uid].user_name, sessions[uid].ip_addr, pcm->message);
         int i;
-        for (i=0;i<USER_CNT;i++)
-        {
-            if (uid==i)continue;
-            wrap_send(sessions[i].conn,&sm);
+        for (i = 0; i < USER_CNT; i++) {
+            if (uid == i) continue;
+            wrap_send(sessions[i].conn, &sm);
         }
-    }
-    else
-    {
-        int friend_id=find_uid_by_user_name(pcm->user_name);
-        if (friend_id==-1||friend_id==uid)
-        {
-            logi("user %d:%s fails to speak to '%s':\"%s\"\n",uid,sessions[uid].user_name,pcm->user_name,pcm->message);
-        }
-        else
-        {
-            logi("uiser %d:%s speaks to %d:%s : \"%s\"\n",uid,sessions[uid].user_name,friend_id,pcm->user_name,pcm->message);
-            wrap_send(sessions[friend_id].conn,&sm);
+    } else {
+        int friend_id = find_uid_by_user_name(pcm->user_name);
+        if (friend_id == -1 || friend_id == uid) {
+            logi("user %d:%s@[%s] fails to speak to %s:\"%s\"\n", uid, sessions[uid].user_name, sessions[uid].ip_addr, pcm->user_name, pcm->message);
+        } else {
+            logi("uiser %d:%s@[%s] speaks to %d:%s : \"%s\"\n", uid, sessions[uid].user_name, sessions[uid].ip_addr, friend_id, pcm->user_name, pcm->message);
+            wrap_send(sessions[friend_id].conn, &sm);
         }
     }
     return 0;
 }
 
 int client_command_accept_battle(int uid) {
-    log("user %s accept battle #%d\n", sessions[uid].user_name, sessions[uid].bid);
+    log("user %s@[%s] accept battle #%d\n", sessions[uid].user_name, sessions[uid].ip_addr, sessions[uid].bid);
 
     if (sessions[uid].state == USER_STATE_BATTLE) {
         logi("already in battle\n");
@@ -860,7 +862,7 @@ int client_command_accept_battle(int uid) {
             user_join_battle(bid, uid);
             logi("accept success\n");
         } else {
-            logi("user %s accept battle which didn't exist\n", sessions[uid].user_name);
+            logi("user %s@[%s] accept battle which didn't exist\n", sessions[uid].user_name, sessions[uid].ip_addr);
             send_to_client(uid, SERVER_RESPONSE_YOURE_ALREADY_IN_BATTLE);
         }
 
@@ -873,7 +875,7 @@ int client_command_accept_battle(int uid) {
 }
 
 int client_command_reject_battle(int uid) {
-    log("user %s reject battle #%d\n", sessions[uid].user_name, sessions[uid].bid);
+    log("user %s@[%s] reject battle #%d\n", sessions[uid].user_name, sessions[uid].ip_addr, sessions[uid].bid);
     if (sessions[uid].state == USER_STATE_BATTLE) {
         logi("user already in battle\n");
         send_to_client(uid, SERVER_RESPONSE_YOURE_ALREADY_IN_BATTLE);
@@ -893,60 +895,59 @@ int client_command_reject_battle(int uid) {
 int client_command_quit(int uid) {
     int conn = sessions[uid].conn;
     if (sessions[uid].state == USER_STATE_BATTLE
-    || sessions[uid].state == USER_STATE_WAIT_TO_BATTLE) {
-        log("user %d@%s tries to quit client was in battle\n", uid, sessions[uid].user_name);
+        || sessions[uid].state == USER_STATE_WAIT_TO_BATTLE) {
+        log("user #%d %s@[%s] tries to quit client was in battle\n", uid, sessions[uid].user_name, sessions[uid].ip_addr);
         user_quit_battle(sessions[uid].bid, uid);
     }
 
     sessions[uid].conn = -1;
-    log("user %d@%s quit\n", uid, sessions[uid].user_name);
+    log("user #%d %s@[%s] quit\n", uid, sessions[uid].user_name, sessions[uid].ip_addr);
     sessions[uid].state = USER_STATE_UNUSED;
     close(conn);
     return -1;
 }
 
 int client_command_move_up(int uid) {
-    log("user %s move up\n", sessions[uid].user_name);
+    log("user #%d %s@[%s] move up\n", uid, sessions[uid].user_name, sessions[uid].ip_addr);
     int bid = sessions[uid].bid;
     battles[bid].users[uid].dir = DIR_UP;
     if (battles[bid].users[uid].pos.y > 0) {
-        battles[bid].users[uid].pos.y --;
+        battles[bid].users[uid].pos.y--;
     }
     return 0;
 }
 
 int client_command_move_down(int uid) {
-    log("user %s move down\n", sessions[uid].user_name);
+    log("user #%d %s@[%s] move down\n", uid, sessions[uid].user_name, sessions[uid].ip_addr);
     int bid = sessions[uid].bid;
     battles[bid].users[uid].dir = DIR_DOWN;
     if (battles[bid].users[uid].pos.y < BATTLE_H - 1) {
-        battles[bid].users[uid].pos.y ++;
+        battles[bid].users[uid].pos.y++;
     }
     return 0;
 }
 
 int client_command_move_left(int uid) {
-    log("user %s move left\n", sessions[uid].user_name);
+    log("user #%d %s@[%s] move left\n", uid, sessions[uid].user_name, sessions[uid].ip_addr);
     int bid = sessions[uid].bid;
     battles[bid].users[uid].dir = DIR_LEFT;
     if (battles[bid].users[uid].pos.x > 0) {
-        battles[bid].users[uid].pos.x --;
+        battles[bid].users[uid].pos.x--;
     }
     return 0;
 }
 
 int client_command_move_right(int uid) {
-    log("user %s move right\n", sessions[uid].user_name);
+    log("user #%d %s@[%s] move right\n", uid, sessions[uid].user_name, sessions[uid].ip_addr);
     int bid = sessions[uid].bid;
     battles[bid].users[uid].dir = DIR_RIGHT;
     if (battles[bid].users[uid].pos.x < BATTLE_W - 1) {
-        battles[bid].users[uid].pos.x ++;
+        battles[bid].users[uid].pos.x++;
     }
     return 0;
 }
-
-int client_command_fire(int uid) {
-    log("user %s fire up\n", sessions[uid].user_name);
+int client_command_fire(int uid, int delta_x, int delta_y, int dir) {
+    log("user #%d %s@[%s] fire %d\n", uid, sessions[uid].user_name, sessions[uid].ip_addr, dir);
     int bid = sessions[uid].bid;
     int item_id = get_unused_item(bid);
     log("alloc item %d for bullet\n", item_id);
@@ -954,143 +955,92 @@ int client_command_fire(int uid) {
 
     if (battles[bid].users[uid].nr_bullets <= 0) {
         send_to_client(uid, SERVER_MESSAGE_YOUR_MAGAZINE_IS_EMPTY);
-        return 0;
+        return 1;
     }
-
-    int x = battles[bid].users[uid].pos.x;
-    int y = battles[bid].users[uid].pos.y;
-    int dir = battles[bid].users[uid].dir;
+    int x = battles[bid].users[uid].pos.x + delta_x;
+    int y = battles[bid].users[uid].pos.y + delta_y;
+    if (x < 0 || x >= BATTLE_W) return 0;
+    if (y < 0 || y >= BATTLE_H) return 0;
     log("bullet, %s@(%d, %d), direct to %d\n",
-            sessions[uid].user_name, x, y, dir);
+        sessions[uid].user_name, x, y, dir);
     battles[bid].items[item_id].kind = ITEM_BULLET;
     battles[bid].items[item_id].dir = dir;
     battles[bid].items[item_id].owner = uid;
     battles[bid].items[item_id].pos.x = x;
     battles[bid].items[item_id].pos.y = y;
-
-    battles[bid].users[uid].nr_bullets --;
-
+    battles[bid].users[uid].nr_bullets--;
     return 0;
 }
 
 int client_command_fire_up(int uid) {
-    log("user %s fire up\n", sessions[uid].user_name);
-    int bid = sessions[uid].bid;
-    int item_id = get_unused_item(bid);
-    log("alloc item %d for bullet\n", item_id);
-    if (item_id == -1) return 0;
-
-    if (battles[bid].users[uid].nr_bullets <= 0) {
-        send_to_client(uid, SERVER_MESSAGE_YOUR_MAGAZINE_IS_EMPTY);
-        return 0;
-    }
-
-    int x = battles[bid].users[uid].pos.x;
-    int y = battles[bid].users[uid].pos.y;
-    log("bullet, %s@(%d, %d), direct to %d\n",
-            sessions[uid].user_name, x, y, DIR_UP);
-    battles[bid].items[item_id].kind = ITEM_BULLET;
-    battles[bid].items[item_id].dir = DIR_UP;
-    battles[bid].items[item_id].owner = uid;
-    battles[bid].items[item_id].pos.x = x;
-    battles[bid].items[item_id].pos.y = y;
-
-    battles[bid].users[uid].nr_bullets --;
-
+    client_command_fire(uid, 0, 0, DIR_UP);
     return 0;
 }
 int client_command_fire_down(int uid) {
-    log("user %s fire\n", sessions[uid].user_name);
-    int bid = sessions[uid].bid;
-    int item_id = get_unused_item(bid);
-    log("alloc item %d for bullet\n", item_id);
-    if (item_id == -1) return 0;
-
-    if (battles[bid].users[uid].nr_bullets <= 0) {
-        send_to_client(uid, SERVER_MESSAGE_YOUR_MAGAZINE_IS_EMPTY);
-        return 0;
-    }
-
-    int x = battles[bid].users[uid].pos.x;
-    int y = battles[bid].users[uid].pos.y;
-    log("bullet, %s@(%d, %d), direct to %d\n",
-            sessions[uid].user_name, x, y, DIR_DOWN);
-    battles[bid].items[item_id].kind = ITEM_BULLET;
-    battles[bid].items[item_id].dir = DIR_DOWN;
-    battles[bid].items[item_id].owner = uid;
-    battles[bid].items[item_id].pos.x = x;
-    battles[bid].items[item_id].pos.y = y;
-
-    battles[bid].users[uid].nr_bullets --;
-
+    client_command_fire(uid, 0, 0, DIR_DOWN);
     return 0;
 }
 int client_command_fire_left(int uid) {
-    log("user %s fire\n", sessions[uid].user_name);
-    int bid = sessions[uid].bid;
-    int item_id = get_unused_item(bid);
-    log("alloc item %d for bullet\n", item_id);
-    if (item_id == -1) return 0;
-
-    if (battles[bid].users[uid].nr_bullets <= 0) {
-        send_to_client(uid, SERVER_MESSAGE_YOUR_MAGAZINE_IS_EMPTY);
-        return 0;
-    }
-
-    int x = battles[bid].users[uid].pos.x;
-    int y = battles[bid].users[uid].pos.y;
-    log("bullet, %s@(%d, %d), direct to %d\n",
-            sessions[uid].user_name, x, y, DIR_LEFT);
-    battles[bid].items[item_id].kind = ITEM_BULLET;
-    battles[bid].items[item_id].dir = DIR_LEFT;
-    battles[bid].items[item_id].owner = uid;
-    battles[bid].items[item_id].pos.x = x;
-    battles[bid].items[item_id].pos.y = y;
-
-    battles[bid].users[uid].nr_bullets --;
-
+    client_command_fire(uid, 0, 0, DIR_LEFT);
     return 0;
 }
 int client_command_fire_right(int uid) {
-    log("user %s fire\n", sessions[uid].user_name);
-    int bid = sessions[uid].bid;
-    int item_id = get_unused_item(bid);
-    log("alloc item %d for bullet\n", item_id);
-    if (item_id == -1) return 0;
-
-    if (battles[bid].users[uid].nr_bullets <= 0) {
-        send_to_client(uid, SERVER_MESSAGE_YOUR_MAGAZINE_IS_EMPTY);
-        return 0;
-    }
-
-    int x = battles[bid].users[uid].pos.x;
-    int y = battles[bid].users[uid].pos.y;
-    log("bullet, %s@(%d, %d), direct to %d\n",
-            sessions[uid].user_name, x, y, DIR_RIGHT);
-    battles[bid].items[item_id].kind = ITEM_BULLET;
-    battles[bid].items[item_id].dir = DIR_RIGHT;
-    battles[bid].items[item_id].owner = uid;
-    battles[bid].items[item_id].pos.x = x;
-    battles[bid].items[item_id].pos.y = y;
-
-    battles[bid].users[uid].nr_bullets --;
-
+    client_command_fire(uid, 0, 0, DIR_RIGHT);
     return 0;
+}
+
+int client_command_fire_aoe(int uid, int dir) {
+    log("user #%d %s@[%s] fire(aoe) %d\n", uid, sessions[uid].user_name, sessions[uid].ip_addr, dir);
+    int limit = battles[sessions[uid].bid].users[uid].nr_bullets / 2;
+    for (int i = 0; limit; i++) {
+        for (int j = -i; j <= i && limit; j++) {
+            switch (dir) {
+                case DIR_UP:
+                    if (client_command_fire(uid, j, -i + abs(j), dir) != 0) return 0;
+                    break;
+                case DIR_DOWN:
+                    if (client_command_fire(uid, j, i - abs(j), dir) != 0) return 0;
+                    break;
+                case DIR_LEFT:
+                    if (client_command_fire(uid, -i + abs(j), j, dir) != 0) return 0;
+                    break;
+                case DIR_RIGHT:
+                    if (client_command_fire(uid, i - abs(j), j, dir) != 0) return 0;
+                    break;
+            }
+            limit--;
+        }
+    }
+    return 0;
+}
+
+int client_command_fire_aoe_up(int uid) {
+    return client_command_fire_aoe(uid, DIR_UP);
+}
+int client_command_fire_aoe_down(int uid) {
+    return client_command_fire_aoe(uid, DIR_DOWN);
+}
+int client_command_fire_aoe_left(int uid) {
+    return client_command_fire_aoe(uid, DIR_LEFT);
+}
+int client_command_fire_aoe_right(int uid) {
+    return client_command_fire_aoe(uid, DIR_RIGHT);
 }
 
 int client_message_fatal(int uid) {
-    loge("received FATAL from user `%s`: %d \n", sessions[uid].user_name, uid);
+    loge("received FATAL from user #%d %s@[%s] \n", uid, sessions[uid].user_name, sessions[uid].ip_addr);
     for (int i = 0; i < USER_CNT; i++) {
         if (sessions[i].conn >= 0) {
             send_to_client(i, SERVER_MESSAGE_FATAL);
-            log("send FATAL to user `%s`: %d\n", sessions[i].user_name, i);
+            log("send FATAL to user #%d %s@[%s]\n", i, sessions[i].user_name, sessions[i].ip_addr);
         }
     }
-    terminate_process(2);
+    terminate_process(SIGINT);
     return 0;
 }
 
-static int(*handler[])(int) = {
+static int (*handler[])(int) = {
+    [CLIENT_MESSAGE_FATAL] = client_message_fatal,
     [CLIENT_COMMAND_USER_QUIT] = client_command_quit,
     [CLIENT_COMMAND_USER_REGISTER] = client_command_user_register,
     [CLIENT_COMMAND_USER_LOGIN] = client_command_user_login,
@@ -1107,15 +1057,17 @@ static int(*handler[])(int) = {
     [CLIENT_COMMAND_MOVE_DOWN] = client_command_move_down,
     [CLIENT_COMMAND_MOVE_LEFT] = client_command_move_left,
     [CLIENT_COMMAND_MOVE_RIGHT] = client_command_move_right,
-    [CLIENT_COMMAND_FIRE] = client_command_fire,
     [CLIENT_COMMAND_FIRE_UP] = client_command_fire_up,
     [CLIENT_COMMAND_FIRE_DOWN] = client_command_fire_down,
     [CLIENT_COMMAND_FIRE_LEFT] = client_command_fire_left,
     [CLIENT_COMMAND_FIRE_RIGHT] = client_command_fire_right,
-    [CLIENT_MESSAGE_FATAL] = client_message_fatal,
+    [CLIENT_COMMAND_FIRE_AOE_UP] = client_command_fire_aoe_up,
+    [CLIENT_COMMAND_FIRE_AOE_DOWN] = client_command_fire_aoe_down,
+    [CLIENT_COMMAND_FIRE_AOE_LEFT] = client_command_fire_aoe_left,
+    [CLIENT_COMMAND_FIRE_AOE_RIGHT] = client_command_fire_aoe_right,
 };
 
-void wrap_recv(int conn, client_message_t *pcm) {
+void wrap_recv(int conn, client_message_t* pcm) {
     size_t total_len = 0;
     while (total_len < sizeof(client_message_t)) {
         size_t len = recv(conn, pcm + total_len, sizeof(client_message_t) - total_len, 0);
@@ -1127,7 +1079,7 @@ void wrap_recv(int conn, client_message_t *pcm) {
     }
 }
 
-void wrap_send(int conn, server_message_t *psm) {
+void wrap_send(int conn, server_message_t* psm) {
     size_t total_len = 0;
     while (total_len < sizeof(server_message_t)) {
         size_t len = send(conn, psm + total_len, sizeof(server_message_t) - total_len, 0);
@@ -1147,7 +1099,7 @@ void send_to_client(int uid, int message) {
     wrap_send(conn, &sm);
 }
 
-void send_to_client_with_username(int uid, int message, char *user_name) {
+void send_to_client_with_username(int uid, int message, char* user_name) {
     int conn = sessions[uid].conn;
     server_message_t sm;
     memset(&sm, 0, sizeof(server_message_t));
@@ -1161,27 +1113,36 @@ void close_session(int conn, int message) {
     close(conn);
 }
 
-void *session_start(void *args) {
+void* session_start(void* args) {
     int uid = -1;
-    int conn = (int)(uintptr_t)args;
-    client_message_t *pcm = NULL;
+    session_args_t info = *(session_args_t*)(uintptr_t)args;
+    client_message_t* pcm = NULL;
     if ((uid = get_unused_session()) < 0) {
-        close_session(conn, SERVER_RESPONSE_LOGIN_FAIL_SERVER_LIMITS);
+        close_session(info.conn, SERVER_RESPONSE_LOGIN_FAIL_SERVER_LIMITS);
         return NULL;
     } else {
-        sessions[uid].conn = conn;
+        sessions[uid].conn = info.conn;
+        strncpy(sessions[uid].user_name, "<unknown>", USERNAME_SIZE);
+        strncpy(sessions[uid].ip_addr, info.ip_addr, IPADDR_SIZE);
+        if (strncmp(sessions[uid].ip_addr, "", IPADDR_SIZE) == 0) {
+            strncpy(sessions[uid].ip_addr, "unknown", IPADDR_SIZE);
+        }
         pcm = &sessions[uid].cm;
         memset(pcm, 0, sizeof(client_message_t));
         log("build session #%d\n", uid);
+        if (strncmp(info.ip_addr, "127.0.0.1", IPADDR_SIZE) == 0) {
+            log("admin login!\n");
+            sessions[uid].is_admin = 1;
+        }
     }
 
     while (1) {
-        wrap_recv(conn, pcm);
+        wrap_recv(info.conn, pcm);
         if (pcm->command >= CLIENT_COMMAND_END)
             continue;
 
         int ret_code = handler[pcm->command](uid);
-        log("state of user '%s': %d\n", sessions[uid].user_name, sessions[uid].state);
+        //log("state of user %s: %d\n", sessions[uid].user_name, sessions[uid].state);
         if (ret_code < 0) {
             log("close session #%d\n", uid);
             break;
@@ -1190,7 +1151,7 @@ void *session_start(void *args) {
     return NULL;
 }
 
-void *run_battle(void *args) {
+void* run_battle(void* args) {
     // TODO:
     return NULL;
 }
@@ -1210,7 +1171,7 @@ int server_start() {
         servaddr.sin_port = htons(cur_port);
         servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
 
-        if (bind(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) == -1) {
+        if (bind(sockfd, (struct sockaddr*)&servaddr, sizeof(servaddr)) == -1) {
             loge("Can not bind to port %d!\n", cur_port);
         } else {
             binded = true;
@@ -1234,9 +1195,10 @@ int server_start() {
 void terminate_process(int recved_signal) {
     for (int i = 0; i < USER_CNT; i++) {
         if (sessions[i].conn >= 0) {
+            log("send QUIT to user #%d %s@[%s]\n", i, sessions[i].user_name, sessions[i].ip_addr);
             send_to_client(i, SERVER_MESSAGE_QUIT);
-            close(sessions[i].conn);
             log("close conn:%d\n", sessions[i].conn);
+            close(sessions[i].conn);
         }
     }
 
@@ -1260,7 +1222,7 @@ void terminate_entrance(int recved_signal) {
     terminate_process(recved_signal);
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
     if (argc == 2) {
         port = atoi(argv[1]);
     }
@@ -1286,11 +1248,13 @@ int main(int argc, char *argv[]) {
     struct sockaddr_in client_addr;
     socklen_t length = sizeof(client_addr);
     while (1) {
-        int conn = accept(server_fd, (struct sockaddr*)&client_addr, &length);
-        log("connected by %s:%d, conn:%d\n", inet_ntoa(client_addr.sin_addr), client_addr.sin_port, conn);
-        if (conn < 0) {
+        static session_args_t info;
+        info.conn = accept(server_fd, (struct sockaddr*)&client_addr, &length);
+        strncpy(info.ip_addr, inet_ntoa(client_addr.sin_addr), IPADDR_SIZE);
+        log("connected by [%s:%d] , conn:%d\n", info.ip_addr, client_addr.sin_port, info.conn);
+        if (info.conn < 0) {
             loge("fail to accept client.\n");
-        } else if (pthread_create(&thread, NULL, session_start, (void *)(uintptr_t)conn) != 0) {
+        } else if (pthread_create(&thread, NULL, session_start, (void*)(uintptr_t)&info) != 0) {
             loge("fail to create thread.\n");
         }
         logi("bind thread #%lu\n", thread);

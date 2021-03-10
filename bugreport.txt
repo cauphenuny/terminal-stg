@@ -1,4 +1,8 @@
-upd:
+-----
+v1.6.0 upd:
+finded a new bug #1, client may login without username or ip address.
+-----
+v1.1.0 upd:
 the following bug has been solved by ycpedef.
 -----
 
