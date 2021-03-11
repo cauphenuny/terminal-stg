@@ -615,11 +615,13 @@ void resume_and_exit(int status) {
 
 /* command handler */
 int cmd_quit(char* args) {
+    wlog("call func %s with args %s\n", __func__, args);
     resume_and_exit(0);
     return 0;
 }
 
 int cmd_ulist(char* args) {
+    wlog("call func %s with args %s\n", __func__, args);
     if (user_state == USER_STATE_NOT_LOGIN)
         bottom_bar_output(0, "Please login first!");
     else
@@ -628,6 +630,7 @@ int cmd_ulist(char* args) {
 }
 
 int cmd_invite(char* args) {
+    wlog("call func %s with args %s\n", __func__, args);
     if (user_state == USER_STATE_NOT_LOGIN) {
         bottom_bar_output(0, "Please login first!");
         return 0;
@@ -640,6 +643,7 @@ int cmd_invite(char* args) {
 }
 
 int cmd_yell(char* args) {
+    wlog("call func %s with args %s\n", __func__, args);
     if (user_state == USER_STATE_NOT_LOGIN) {
         bottom_bar_output(0, "Please login first!");
         return 0;
@@ -654,6 +658,7 @@ int cmd_yell(char* args) {
 }
 
 int cmd_tell(char* args) {
+    wlog("call func %s with args %s\n", __func__, args);
     if (user_state == USER_STATE_NOT_LOGIN) {
         bottom_bar_output(0, "Please login first!");
         return 0;
@@ -672,14 +677,25 @@ int cmd_tell(char* args) {
 }
 
 int cmd_fuck(char* args) {
+    wlog("call func %s with args %s\n", __func__, args);
     send_command(CLIENT_MESSAGE_FATAL);
+    return 0;
+}
+
+int cmd_admin(char* args) {
+    wlog("call func %s with args %s\n", __func__, args);
+    client_message_t cm;
+    cm.command = CLIENT_COMMAND_ADMIN_CONTROL;
+    strncpy(cm.user_name, user_name, USERNAME_SIZE - 1);
+    strncpy(cm.user_name, args, MSG_SIZE - 1);
+    wrap_send(&cm);
     return 0;
 }
 
 int cmd_help(char* args) {
     if (args) {
         if (strcmp(args, "--list") == 0) {
-            bottom_bar_output(0, "quit, help, ulist, invite, yell, tell, fuck");
+            bottom_bar_output(0, "quit, help, ulist, invite, yell, tell, fuck, admin");
         } else if (strcmp(args, "quit") == 0) {
             bottom_bar_output(0, "quit the game and return terminal");
         } else if (strcmp(args, "ulist") == 0) {
@@ -692,6 +708,14 @@ int cmd_help(char* args) {
             bottom_bar_output(0, "send message to one friend(need args)");
         } else if (strcmp(args, "fuck") == 0) {
             bottom_bar_output(0, "forced stop ALL client and server");
+        } else if (strcmp(args, "admin") == 0) {
+            bottom_bar_output(0, "control client info (need args: <ban, energy, life>)");
+        } else if (strcmp(args, "admin ban") == 0) {
+            bottom_bar_output(0, "ban user by uid (need args)");
+        } else if (strcmp(args, "admin energy") == 0) {
+            bottom_bar_output(0, "reset user energy by uid (need 2 args)");
+        } else if (strcmp(args, "admin life") == 0) {
+            bottom_bar_output(0, "reset user life by uid (need 2 args)");
         } else {
             bottom_bar_output(0, "no help for '%s'", args);
         }
@@ -713,6 +737,7 @@ static struct {
     {"fuck", cmd_fuck},
     /* ------------------- */
     {"help", cmd_help},
+    {"admin", cmd_admin},
 };
 
 #define NR_HANDLER ((int)sizeof(command_handler) / (int)sizeof(command_handler[0]))
@@ -720,8 +745,13 @@ static struct {
 void read_and_execute_command() {
     char* command = accept_input("command: ");
     wlog("accept command: '%s'\n", command);
+    char* args = (char*)malloc(MSG_SIZE);
     strtok(command, " \t");
-    char* args = strtok(NULL, " \t");
+    char* arg = strtok(NULL, " \t");
+    while (arg != NULL) {
+        strcat(args, arg);
+        arg = strtok(NULL, " \t");
+    }
 
     for (int i = 0; i < NR_HANDLER; i++) {
         if (strcmp(command, command_handler[i].cmd) == 0) {
@@ -1424,6 +1454,12 @@ int server_message_you_got_magazine(server_message_t* psm) {
 int server_message_your_magazine_is_empty(server_message_t* psm) {
     wlog("call message handler %s\n", __func__);
     server_say("your energy is not enough");
+    return 0;
+}
+
+int serv_msg_you_not_admin(server_message_t* psm) {
+    wlog("call message handler %s\n", __func__);
+    server_say("you are not admin");
     return 0;
 }
 

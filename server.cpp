@@ -1137,14 +1137,55 @@ int client_command_fire_aoe_right(int uid) {
     return client_command_fire_aoe(uid, DIR_RIGHT);
 }
 
-int client_command_ban_user(int uid) {
-    if (!sessions[uid].is_admin) return say_to_client(uid, (char*)"you are not admin!"), 0;
+int admin_ban_user(char* args) {
+    log("admin ban user '%s'\n", args);
+    int uid = atoi(args);
+    if (uid < 0 || uid >= USER_CNT) {
+        return 0;
+    }
     if (sessions[uid].conn >= 0) {
+        char* message = (char*)malloc(MSG_SIZE);
+        sprintf(message, "admin banned user #%d %s@[%s]\n", uid, sessions[uid].user_name, sessions[uid].ip_addr);
         log("admin banned user #%d %s@[%s]\n", uid, sessions[uid].user_name, sessions[uid].ip_addr);
         send_to_client(uid, SERVER_STATUS_QUIT);
         log("close conn:%d\n", sessions[uid].conn);
         close(sessions[uid].conn);
         sessions[uid].conn = -1;
+        for (int i = 0; i < USER_CNT; i++) {
+            if (sessions[i].conn >= 0) {
+                say_to_client(i, message);
+            }
+        }
+    }
+    return 0;
+}
+
+static struct {
+    const char* cmd;
+    int (*func)(char* args);
+} admin_handler[] = {
+    {"ban", admin_ban_user},
+    //{"bullets", admin_set_bullets},
+};
+
+#define NR_HANDLER ((int)sizeof(admin_handler) / (int)sizeof(admin_handler[0]))
+
+int client_command_admin_control(int uid) {
+    if (!sessions[uid].is_admin) {
+        say_to_client(uid, (char*)"you are not admin");
+        return 0;
+    }
+    client_message_t* pcm = &sessions[uid].cm;
+    char* command = (char*)pcm->message;
+
+    strtok(command, " \t");
+    char* args = strtok(NULL, " \t");
+
+    for (int i = 0; i < NR_HANDLER; i++) {
+        if (strcmp(command, admin_handler[i].cmd) == 0) {
+            admin_handler[i].func(args);
+            return 0;
+        }
     }
     return 0;
 }
@@ -1200,9 +1241,10 @@ void init_handler() {
     handler[CLIENT_COMMAND_FIRE_AOE_UP] = client_command_fire_aoe_up,
     handler[CLIENT_COMMAND_FIRE_AOE_DOWN] = client_command_fire_aoe_down,
     handler[CLIENT_COMMAND_FIRE_AOE_LEFT] = client_command_fire_aoe_left,
-    handler[CLIENT_COMMAND_FIRE_AOE_RIGHT] = client_command_fire_aoe_right,
+    handler[CLIENT_COMMAND_FIRE_AOE_RIGHT] = client_command_fire_aoe_right;
 
-    handler[CLIENT_COMMAND_BAN_USER] = client_command_ban_user;
+    handler[CLIENT_COMMAND_ADMIN_CONTROL] = client_command_admin_control;
+
 }
 
 void wrap_recv(int conn, client_message_t* pcm) {
@@ -1242,7 +1284,7 @@ void say_to_client(int uid, char *message) {
     server_message_t sm;
     memset(&sm, 0, sizeof(server_message_t));
     sm.message = SERVER_MESSAGE;
-    strncpy(sm.msg, message, MSG_SIZE);
+    strncpy(sm.msg, message, MSG_SIZE - 1);
     wrap_send(conn, &sm);
 }
 
@@ -1269,10 +1311,10 @@ void* session_start(void* args) {
         return NULL;
     } else {
         sessions[uid].conn = info.conn;
-        strncpy(sessions[uid].user_name, "<unknown>", USERNAME_SIZE);
-        strncpy(sessions[uid].ip_addr, info.ip_addr, IPADDR_SIZE);
+        strncpy(sessions[uid].user_name, "<unknown>", USERNAME_SIZE - 1);
+        strncpy(sessions[uid].ip_addr, info.ip_addr, IPADDR_SIZE - 1);
         if (strncmp(sessions[uid].ip_addr, "", IPADDR_SIZE) == 0) {
-            strncpy(sessions[uid].ip_addr, "unknown", IPADDR_SIZE);
+            strncpy(sessions[uid].ip_addr, "unknown", IPADDR_SIZE - 1);
         }
         pcm = &sessions[uid].cm;
         memset(pcm, 0, sizeof(client_message_t));
@@ -1401,7 +1443,7 @@ int main(int argc, char* argv[]) {
     while (1) {
         static session_args_t info;
         info.conn = accept(server_fd, (struct sockaddr*)&client_addr, &length);
-        strncpy(info.ip_addr, inet_ntoa(client_addr.sin_addr), IPADDR_SIZE);
+        strncpy(info.ip_addr, inet_ntoa(client_addr.sin_addr), IPADDR_SIZE - 1);
         log("connected by [%s:%d] , conn:%d\n", info.ip_addr, client_addr.sin_port, info.conn);
         if (info.conn < 0) {
             loge("fail to accept client.\n");

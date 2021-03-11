@@ -137,7 +137,7 @@
 #define PASSWORD_SIZE USERNAME_SIZE
 
 #define INIT_BULLETS 12
-#define MAX_BULLETS 48
+#define MAX_BULLETS 240
 #define BULLETS_PER_MAGAZINE 12
 
 #define INIT_LIFE 10
@@ -186,7 +186,7 @@ enum {
     CLIENT_COMMAND_FIRE_AOE_DOWN,
     CLIENT_COMMAND_FIRE_AOE_LEFT,
     CLIENT_COMMAND_FIRE_AOE_RIGHT,
-    CLIENT_COMMAND_BAN_USER,
+    CLIENT_COMMAND_ADMIN_CONTROL,
     CLIENT_COMMAND_END,
 };
 
@@ -413,17 +413,18 @@ void init_constants() {
     signal_name_s[SIGXFSZ  ] = (char*)"SIGXFSZ";
     color_s[0] = (char*)NONE;
     color_s[1] = (char*)RED;
-    color_s[2] = (char*)YELLOW;
-    color_s[3] = (char*)GREEN;
+    color_s[2] = (char*)GREEN;
+    color_s[3] = (char*)BROWN;
     color_s[4] = (char*)BLUE;
     color_s[5] = (char*)PURPLE;
     color_s[6] = (char*)CYAN;
     color_s[7] = (char*)L_RED;
     color_s[8] = (char*)L_GREEN;
-    color_s[9] = (char*)L_BLUE;
-    color_s[10] = (char*)L_PURPLE;
-    color_s[11] = (char*)L_CYAN;
-    color_s_size = 11;
+    color_s[9] = (char*)YELLOW;
+    color_s[10] = (char*)L_BLUE;
+    color_s[11] = (char*)L_PURPLE;
+    color_s[12] = (char*)L_CYAN;
+    color_s_size = 12;
 };
 
 
