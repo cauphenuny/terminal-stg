@@ -333,7 +333,7 @@ void forced_generate_items(int bid, int x, int y, int kind, int count) {
 void random_generate_items(int bid) {
     int random_kind, item_id;
     if (!probability(1, 50)) return;
-    //if (battles[bid].num_of_other >= MAX_OTHER) return;
+    if (battles[bid].num_of_other >= MAX_OTHER) return;
     item_id = get_unused_item(bid);
     if (item_id == -1) return;
     random_kind = rand() % (ITEM_END - 1) + 1;
