@@ -151,6 +151,8 @@ int query_session_built(uint32_t uid) {
     }
 }
 
+void inform_all_user_battle_player(int bid);
+
 void user_quit_battle(uint32_t bid, uint32_t uid) {
     assert(bid < USER_CNT && uid < USER_CNT);
 
@@ -170,10 +172,10 @@ void user_quit_battle(uint32_t bid, uint32_t uid) {
 
         for (int i = 0; i < USER_CNT; i++) {
             if (battles[bid].users[i].battle_state != BATTLE_STATE_UNJOINED) {
-
                 wrap_send(sessions[i].conn, &sm);
             }
         }
+        inform_all_user_battle_player(bid);
     }
 }
 
@@ -196,6 +198,7 @@ void user_join_battle_common_part(uint32_t bid, uint32_t uid, uint32_t joined_st
 
     sessions[uid].state = joined_state;
     sessions[uid].bid = bid;
+    inform_all_user_battle_player(bid);
 }
 
 void user_join_battle(uint32_t bid, uint32_t uid) {
@@ -211,6 +214,7 @@ void user_join_battle(uint32_t bid, uint32_t uid) {
     if (battles[bid].users[uid].battle_state == BATTLE_STATE_UNJOINED) {
         user_join_battle_common_part(bid, uid, USER_STATE_BATTLE);
     }
+    inform_all_user_battle_player(bid);
 }
 
 void user_invited_to_join_battle(uint32_t bid, uint32_t uid) {
@@ -316,7 +320,7 @@ int get_unused_item(int bid) {
 
 void forced_generate_items(int bid, int x, int y, int kind, int count) {
     int item_id;
-    if (battles[bid].num_of_other >= MAX_OTHER) return;
+    //if (battles[bid].num_of_other >= MAX_OTHER) return;
     item_id = get_unused_item(bid);
     if (item_id == -1) return;
     battles[bid].item_count++;
@@ -324,15 +328,17 @@ void forced_generate_items(int bid, int x, int y, int kind, int count) {
     battles[bid].items[item_id].pos.x = x;
     battles[bid].items[item_id].pos.y = y;
     battles[bid].items[item_id].times = count;
+    battles[bid].items[item_id].is_used = true;
     log("new item: #%dk%d(%d,%d)\n", item_id,
         battles[bid].items[item_id].kind,
         battles[bid].items[item_id].pos.x,
         battles[bid].items[item_id].pos.y);
+    //battles[bid].num_of_other ++;
 }
 
 void random_generate_items(int bid) {
     int random_kind, item_id;
-    if (!probability(1, 50)) return;
+    if (!probability(1, 100)) return;
     if (battles[bid].num_of_other >= MAX_OTHER) return;
     item_id = get_unused_item(bid);
     if (item_id == -1) return;
@@ -344,6 +350,7 @@ void random_generate_items(int bid) {
     battles[bid].items[item_id].pos.x = (rand() & 0x7FFF) % BATTLE_W;
     battles[bid].items[item_id].pos.y = (rand() & 0x7FFF) % BATTLE_H;
     battles[bid].items[item_id].times = OTHER_ITEM_LASTS_TIME;
+    battles[bid].items[item_id].is_used = true;
     battles[bid].num_of_other ++;
     log("new item: #%dk%d(%d,%d)\n", item_id,
         battles[bid].items[item_id].kind,
@@ -459,7 +466,7 @@ void check_user_status(int uid) {
                     if (battles[bid].items[i].count <= 0) {
                         log("magma %d is exhausted\n", i);
                         //battles[bid].items[i].kind = ITEM_BLANK;
-                        //battles[bid].num_of_other--;
+                        battles[bid].num_of_other--;
                         battles[bid].items[i].is_used = false;
                     }
                     break;
@@ -473,7 +480,7 @@ void check_user_status(int uid) {
                     }
                     //battles[bid].items[i].kind = ITEM_BLANK;
                     battles[bid].items[i].times = 0;
-                    //battles[bid].num_of_other--;
+                    battles[bid].num_of_other--;
                     send_to_client(uid, SERVER_MESSAGE_YOU_GOT_BLOOD_VIAL);
                     battles[bid].items[i].is_used = false;
                     break;
@@ -533,8 +540,10 @@ void check_who_is_dead(int bid) {
             battles[bid].users[i].battle_state = BATTLE_STATE_DEAD;
             log("send dead info to user #%d %s@[%s]\n", i, sessions[i].user_name, sessions[i].ip_addr);
             send_to_client(i, SERVER_MESSAGE_YOU_ARE_DEAD);
+            inform_all_user_battle_player(bid);
         } else if (battles[bid].users[i].battle_state == BATTLE_STATE_DEAD) {
             battles[bid].users[i].battle_state = BATTLE_STATE_WITNESS;
+            battles[bid].users[i].nr_bullets = 0;
         }
     }
 }
@@ -594,6 +603,27 @@ void render_map_for_user(int uid, server_message_t* psm) {
     }
 }
 
+void inform_all_user_battle_player(int bid) {
+    server_message_t sm;
+    sm.message = SERVER_MESSAGE_BATTLE_PLAYER;
+    for (int i = 0; i < USER_CNT; i++) {
+        if (battles[bid].users[i].battle_state == BATTLE_STATE_LIVE && 
+            battles[bid].users[i].life > 0) {
+            strncpy(sm.user_name[i], sessions[i].user_name, USERNAME_SIZE - 1);
+            sm.user_namecolor[i] = i % color_s_size + 1;
+        } else {
+            strcpy(sm.user_name[i], (char*)"");
+            sm.user_namecolor[i] = 0;
+        }
+    }
+    for (int i = 0; i < USER_CNT; i++) {
+        if (battles[bid].users[i].battle_state != BATTLE_STATE_UNJOINED) {
+            wrap_send(sessions[i].conn, &sm);
+            log("inform user #%d %s@[%s]\n", i, sessions[i].user_name, sessions[i].ip_addr);
+        }
+    }
+}
+
 void inform_all_user_battle_state(int bid) {
     server_message_t sm;
     sm.message = SERVER_MESSAGE_BATTLE_INFORMATION;
@@ -608,16 +638,6 @@ void inform_all_user_battle_state(int bid) {
             sm.user_color[i] = 0;
         }
     }
-
-    //for (int i = 0; i < MAX_ITEM; i++) {
-    //    if (battles[bid].items[i].is_used) {
-    //        //sm.item_kind[i] = battles[bid].items[i].kind;
-    //        //sm.item_pos[i].x = battles[bid].items[i].pos.x;
-    //        //sm.item_pos[i].y = battles[bid].items[i].pos.y;
-    //    } else {
-    //        //sm.item_kind[i] = ITEM_NONE;
-    //    }
-    //}
 
     for (int i = 0; i < USER_CNT; i++) {
         if (battles[bid].users[i].battle_state != BATTLE_STATE_UNJOINED) {
@@ -642,6 +662,7 @@ void* battle_ruler(void* args) {
                               ITEM_GRASS,
                               10000);
     }
+    inform_all_user_battle_player(bid);
     while (battles[bid].is_alloced) {
         move_bullets(bid);
         check_who_is_shooted(bid);
@@ -1423,6 +1444,12 @@ int main(int argc, char* argv[]) {
     pthread_t thread;
 
     if (signal(SIGINT, terminate_entrance) == SIG_ERR) {
+        eprintf("An error occurred while setting a signal handler.\n");
+    }
+    if (signal(SIGSEGV, terminate_entrance) == SIG_ERR) {
+        eprintf("An error occurred while setting a signal handler.\n");
+    }
+    if (signal(SIGABRT, terminate_entrance) == SIG_ERR) {
         eprintf("An error occurred while setting a signal handler.\n");
     }
 

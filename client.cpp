@@ -745,13 +745,13 @@ static struct {
 void read_and_execute_command() {
     char* command = accept_input("command: ");
     wlog("accept command: '%s'\n", command);
-    char* args = (char*)malloc(MSG_SIZE);
+    //char* args = (char*)malloc(MSG_SIZE);
     strtok(command, " \t");
-    char* arg = strtok(NULL, " \t");
-    while (arg != NULL) {
-        strcat(args, arg);
-        arg = strtok(NULL, " \t");
-    }
+    char* args = strtok(NULL, " \t");
+    //while (arg != NULL) {
+    //    strcat(args, arg);
+    //    arg = strtok(NULL, " \t");
+    //}
 
     for (int i = 0; i < NR_HANDLER; i++) {
         if (strcmp(command, command_handler[i].cmd) == 0) {
@@ -1346,39 +1346,45 @@ void draw_items(server_message_t* psm) {
     for (int i = 0, cur; i < BATTLE_H; i++) {
         for (int j = 0; j < BATTLE_W; j += 2) {
             cur = (int)psm->map[i][j >> 1] & 0x0F;
-            //if (map[i][j] != cur) {
+            if (map[i][j] != cur) {
                 map[i][j] = cur;
                 set_cursor(j, i);
                 if (cur == MAP_ITEM_MY_BULLET) printf("%s%s%s", color_s[psm->color], map_s[cur], color_s[0]);
                 else printf("%s", map_s[cur]);
                 if (map_s[cur] == NULL) exit(cur);
                 //putchar(' ');
-            //}
+            }
             cur = (int)(psm->map[i][j >> 1] >> 4) & 0x0F;
-            //if (map[i][j + 1] != cur) {
+            if (map[i][j + 1] != cur) {
                 map[i][j + 1] = cur;
                 set_cursor(j + 1, i);
                 if (cur == MAP_ITEM_MY_BULLET) printf("%s%s%s", color_s[psm->color], map_s[cur], color_s[0]);
                 else printf("%s", map_s[cur]);
                 if (map_s[cur] == NULL) exit(cur);
                 //putchar(' ');
-            //}
+            }
         }
     }
-    //for (int i = 0; i < MAX_ITEM; i++) {
-    //    if (psm->item_kind[i] == ITEM_NONE)
-    //        continue;
+    fflush(stdout);
+    unlock_cursor();
+}
 
-    //    set_cursor(psm->item_pos[i].x, psm->item_pos[i].y);
-    //    switch (psm->item_kind[i]) {
-    //        case ITEM_MAGAZINE: printf("+"); break;
-    //        case ITEM_MAGMA: printf("X"); break;
-    //        case ITEM_GRASS: printf("█"); break;
-    //        case ITEM_BLOOD_VIAL: printf("*"); break;
-    //        case ITEM_BULLET: printf("."); break;
-    //        case ITEM_BLANK: printf(" "); break;
-    //    }
-    //}
+void draw_players(server_message_t* psm) {
+    lock_cursor();
+    for (int i = 0; i < BATTLE_H; i++) {
+        set_cursor(BATTLE_W, i);
+        for (int j = 0; j < SCR_W - BATTLE_W; j++) {
+            putchar(' ');
+        }
+    }
+    set_cursor(BATTLE_W, 0);
+    printf("Current player:");
+    for (int i = 0, p = 0; i < USER_CNT; i++) {
+        if (psm->user_namecolor[i] != 0) {
+            set_cursor(BATTLE_W, ++p);
+            printf("%s%s%s", color_s[psm->user_namecolor[i]], psm->user_name[i], color_s[0]);
+        }
+    }
     fflush(stdout);
     unlock_cursor();
 }
@@ -1411,12 +1417,20 @@ void log_psm_info(server_message_t* psm) {
 int serv_msg_battle_info(server_message_t* psm) {
     wlog("call message handler %s\n", __func__);
     if (user_state == USER_STATE_BATTLE) {
-        log_psm_info(psm);
+        //log_psm_info(psm);
         user_bullets = psm->bullets_num;
         user_hp = psm->life;
         draw_items(psm);
         draw_users(psm);
         display_user_state();
+    }
+    return 0;
+}
+
+int serv_msg_battle_player(server_message_t* psm) {
+    wlog("call message handler %s\n", __func__);
+    if (user_state == USER_STATE_BATTLE) {
+        draw_players(psm);
     }
     return 0;
 }
@@ -1621,6 +1635,7 @@ void init_local_constants() {
     recv_msg_func[SERVER_MESSAGE_USER_QUIT_BATTLE] = serv_msg_friend_quit_battle;
     recv_msg_func[SERVER_MESSAGE_BATTLE_DISBANDED] = serv_msg_battle_disbanded;
     recv_msg_func[SERVER_MESSAGE_BATTLE_INFORMATION] = serv_msg_battle_info;
+    recv_msg_func[SERVER_MESSAGE_BATTLE_PLAYER] = serv_msg_battle_player;
     recv_msg_func[SERVER_MESSAGE_YOU_ARE_DEAD] = serv_msg_you_are_dead;
     recv_msg_func[SERVER_MESSAGE_YOU_ARE_SHOOTED] = serv_msg_you_are_shooted;
     recv_msg_func[SERVER_MESSAGE_YOU_ARE_TRAPPED_IN_MAGMA] = serv_msg_you_are_trapped_in_magma;

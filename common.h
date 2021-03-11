@@ -1,7 +1,7 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#define VERSION "v2.0.0"
+#define VERSION "v2.1.0"
 
 #include <cstdio>
 #include <cstdlib>
@@ -224,6 +224,7 @@ enum {
     SERVER_MESSAGE_USER_QUIT_BATTLE,
     SERVER_MESSAGE_BATTLE_DISBANDED,          // since no other users in this battle
     SERVER_MESSAGE_BATTLE_INFORMATION,
+    SERVER_MESSAGE_BATTLE_PLAYER,
     SERVER_MESSAGE_YOU_ARE_DEAD,
     SERVER_MESSAGE_YOU_ARE_SHOOTED,
     SERVER_MESSAGE_YOU_ARE_TRAPPED_IN_MAGMA,
@@ -320,12 +321,17 @@ typedef struct server_message_t {
         } all_users[USER_CNT];
 
         struct {
-            uint8_t life, index, bullets_num, color;
+            uint16_t life, index, bullets_num, color;
             pos_t user_pos[USER_CNT];
             uint8_t user_color[USER_CNT];
             uint8_t map[BATTLE_H][BATTLE_W / 2 + 1];
             //pos_t item_pos[MAX_ITEM];
             //uint8_t item_kind[MAX_ITEM];
+        };
+
+        struct {
+            char user_name[USER_CNT][USERNAME_SIZE];
+            uint8_t user_namecolor[USER_CNT];
         };
 
         struct {
