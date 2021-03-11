@@ -24,9 +24,9 @@ static int user_bullets = 0;
 static int user_state = USER_STATE_NOT_LOGIN;
 static char* user_name = (char*)"<unknown>";
 static char* log_file = (char*)"runtime.log";
+static int map[BATTLE_H][BATTLE_W];
 
-#define USER_STATE_LEN 16
-static char user_state_s[8][USER_STATE_LEN];
+static char* user_state_s[8];
 
 static int client_fd = -1;
 
@@ -81,7 +81,7 @@ struct catalog_t {
 
 typedef struct catalog_t catalog_t;
 
-static char server_message_s[256][64];
+static char* server_message_s[256];
 
 void strlwr(char* s) {
     while (*s) {
@@ -856,6 +856,7 @@ void run_battle() {
     bottom_bar_output(0, "type <TAB> to enter command mode and invite more friends\n");
     echo_off();
     disable_buffer();
+    //memset(map, -1, sizeof(map));
     while (user_state == USER_STATE_BATTLE) {
         int ch = fgetc(stdin);
         if (ch == 'q') {
@@ -1262,45 +1263,48 @@ int serv_msg_battle_disbanded(server_message_t* psm) {
 }
 
 void flip_old_items(server_message_t* psm) {
-    static server_message_t sm = {0};
-    wlog("call flip old items\n");
-    lock_cursor();
-    for (int i = 0; i < USER_CNT; i++) {
-        if (sm.user_pos[i].x >= BATTLE_W
-            || sm.user_pos[i].y >= BATTLE_H)
-            continue;
+    //static server_message_t sm = {0};
+    //wlog("call flip old items\n");
+    //lock_cursor();
+    //for (int i = 0; i < USER_CNT; i++) {
+    //    if (sm.user_pos[i].x >= BATTLE_W
+    //        || sm.user_pos[i].y >= BATTLE_H)
+    //        continue;
 
-        wlog("clear user %d@(%d, %d)\n", i, sm.user_pos[i].x, sm.user_pos[i].y);
-        set_cursor(sm.user_pos[i].x, sm.user_pos[i].y);
-        printf(" ");
-    }
+    //    wlog("clear user %d@(%d, %d)\n", i, sm.user_pos[i].x, sm.user_pos[i].y);
+    //    set_cursor(sm.user_pos[i].x, sm.user_pos[i].y);
+    //    printf(" ");
+    //}
 
-    for (int i = 0; i < MAX_ITEM; i++) {
-        if (sm.item_kind[i] != ITEM_BULLET)
-            continue;
+    //for (int i = 0; i < MAX_ITEM; i++) {
+    //    if (sm.item_kind[i] != ITEM_BULLET)
+    //        continue;
 
-        set_cursor(sm.item_pos[i].x, sm.item_pos[i].y);
-        printf(" ");
-    }
+    //    set_cursor(sm.item_pos[i].x, sm.item_pos[i].y);
+    //    printf(" ");
+    //}
 
-    fflush(stdout);
+    //fflush(stdout);
 
-    unlock_cursor();
-    memcpy(&sm, psm, sizeof(server_message_t));
+    //unlock_cursor();
+    //memcpy(&sm, psm, sizeof(server_message_t));
 }
 
 void draw_users(server_message_t* psm) {
     lock_cursor();
-    for (int i = 0; i < USER_CNT; i++) {
-        if (psm->user_pos[i].x >= BATTLE_W
-            || psm->user_pos[i].y >= BATTLE_H)
-            continue;
+    for (int i = 0, x, y; i < USER_CNT; i++) {
+        x = psm->user_pos[i].x;
+        y = psm->user_pos[i].y;
+        if (!psm->user_color[i]) continue;
+        if (x >= BATTLE_W || y >= BATTLE_H) continue;
+        if (map[y][x] == MAP_ITEM_GRASS) continue;
+        map[y][x] = MAP_ITEM_USER;
 
-        set_cursor(psm->user_pos[i].x, psm->user_pos[i].y);
+        set_cursor(x, y);
         if (i == psm->index)
-            printf(GREEN "Y" NONE);
+            printf("%sY%s", color_s[psm->user_color[i]], color_s[0]);
         else
-            printf(RED "A" NONE);
+            printf("%sA%s", color_s[psm->user_color[i]], color_s[0]);
     }
 
     fflush(stdout);
@@ -1309,23 +1313,43 @@ void draw_users(server_message_t* psm) {
 
 void draw_items(server_message_t* psm) {
     lock_cursor();
-    for (int i = 0; i < MAX_ITEM; i++) {
-        if (psm->item_kind[i] == ITEM_NONE)
-            continue;
-
-        set_cursor(psm->item_pos[i].x, psm->item_pos[i].y);
-        switch (psm->item_kind[i]) {
-            case ITEM_MAGAZINE: printf("+"); break;
-            case ITEM_MAGMA: printf("X"); break;
-            case ITEM_GRASS: printf("█"); break;
-            case ITEM_BLOOD_VIAL: printf("*"); break;
-            case ITEM_BULLET: printf("."); break;
-            case ITEM_BLANK: printf(" "); break;
+    for (int i = 0, cur; i < BATTLE_H; i++) {
+        for (int j = 0; j < BATTLE_W; j += 2) {
+            cur = (int)psm->map[i][j >> 1] & 0x0F;
+            //if (map[i][j] != cur) {
+                map[i][j] = cur;
+                set_cursor(j, i);
+                if (cur == MAP_ITEM_MY_BULLET) printf("%s%s%s", color_s[psm->color], map_s[cur], color_s[0]);
+                else printf("%s", map_s[cur]);
+                if (map_s[cur] == NULL) exit(cur);
+                //putchar(' ');
+            //}
+            cur = (int)(psm->map[i][j >> 1] >> 4) & 0x0F;
+            //if (map[i][j + 1] != cur) {
+                map[i][j + 1] = cur;
+                set_cursor(j + 1, i);
+                if (cur == MAP_ITEM_MY_BULLET) printf("%s%s%s", color_s[psm->color], map_s[cur], color_s[0]);
+                else printf("%s", map_s[cur]);
+                if (map_s[cur] == NULL) exit(cur);
+                //putchar(' ');
+            //}
         }
     }
+    //for (int i = 0; i < MAX_ITEM; i++) {
+    //    if (psm->item_kind[i] == ITEM_NONE)
+    //        continue;
 
+    //    set_cursor(psm->item_pos[i].x, psm->item_pos[i].y);
+    //    switch (psm->item_kind[i]) {
+    //        case ITEM_MAGAZINE: printf("+"); break;
+    //        case ITEM_MAGMA: printf("X"); break;
+    //        case ITEM_GRASS: printf("█"); break;
+    //        case ITEM_BLOOD_VIAL: printf("*"); break;
+    //        case ITEM_BULLET: printf("."); break;
+    //        case ITEM_BLANK: printf(" "); break;
+    //    }
+    //}
     fflush(stdout);
-
     unlock_cursor();
 }
 
@@ -1342,9 +1366,9 @@ void log_psm_info(server_message_t* psm) {
     len += sprintf(p + len, "\n");
 
     len += sprintf(p + len, "items:");
-    for (int i = 0; i < MAX_ITEM; i++) {
-        len += sprintf(p + len, "(%d:%d,%d), ", psm->item_kind[i], psm->item_pos[i].x, psm->item_pos[i].y);
-    }
+    //for (int i = 0; i < MAX_ITEM; i++) {
+        //len += sprintf(p + len, "(%d:%d,%d), ", psm->item_kind[i], psm->item_pos[i].x, psm->item_pos[i].y);
+    //}
 
     len += sprintf(p + len, "\n");
 
@@ -1360,9 +1384,8 @@ int serv_msg_battle_info(server_message_t* psm) {
         log_psm_info(psm);
         user_bullets = psm->bullets_num;
         user_hp = psm->life;
-        flip_old_items(psm);
-        draw_users(psm);
         draw_items(psm);
+        draw_users(psm);
         display_user_state();
     }
     return 0;
@@ -1498,42 +1521,42 @@ int main(int argc, char* argv[]) {
 }
 
 void init_local_constants() {
-    strncpy(user_state_s[USER_STATE_NOT_LOGIN], "not login", USER_STATE_LEN);
-    strncpy(user_state_s[USER_STATE_LOGIN], "login", USER_STATE_LEN);
-    strncpy(user_state_s[USER_STATE_BATTLE], "battle", USER_STATE_LEN);
+    user_state_s[USER_STATE_NOT_LOGIN] = (char*)"not login";
+    user_state_s[USER_STATE_LOGIN] = (char*)"login";
+    user_state_s[USER_STATE_BATTLE] = (char*)"battle";
 
-    strcpy(server_message_s[SERVER_SAY_NOTHING], "SERVER_SAY_NOTHING");
-    strcpy(server_message_s[SERVER_RESPONSE_LOGIN_SUCCESS], "SERVER_RESPONSE_LOGIN_SUCCESS");
-    strcpy(server_message_s[SERVER_RESPONSE_YOU_HAVE_LOGINED], "SERVER_RESPONSE_YOU_HAVE_LOGINED");
-    strcpy(server_message_s[SERVER_RESPONSE_YOU_HAVE_NOT_LOGIN], "SERVER_RESPONSE_YOU_HAVE_NOT_LOGIN");
-    strcpy(server_message_s[SERVER_RESPONSE_LOGIN_FAIL_UNREGISTERED_USERID], "SERVER_RESPONSE_LOGIN_FAIL_UNREGISTERED_USERID");
-    strcpy(server_message_s[SERVER_RESPONSE_LOGIN_FAIL_ERROR_PASSWORD], "SERVER_RESPONSE_LOGIN_FAIL_ERROR_PASSWORD");
-    strcpy(server_message_s[SERVER_RESPONSE_LOGIN_FAIL_DUP_USERID], "SERVER_RESPONSE_LOGIN_FAIL_DUP_USERID");
-    strcpy(server_message_s[SERVER_RESPONSE_LOGIN_FAIL_SERVER_LIMITS], "SERVER_RESPONSE_LOGIN_FAIL_SERVER_LIMITS");
-    strcpy(server_message_s[SERVER_RESPONSE_ALL_USERS_INFO], "SERVER_RESPONSE_ALL_USERS_INFO");
-    strcpy(server_message_s[SERVER_RESPONSE_ALL_FRIENDS_INFO], "SERVER_RESPONSE_ALL_FRIENDS_INFO");
-    strcpy(server_message_s[SERVER_RESPONSE_LAUNCH_BATTLE_FAIL], "SERVER_RESPONSE_LAUNCH_BATTLE_FAIL");
-    strcpy(server_message_s[SERVER_RESPONSE_LAUNCH_BATTLE_SUCCESS], "SERVER_RESPONSE_LAUNCH_BATTLE_SUCCESS");
-    strcpy(server_message_s[SERVER_RESPONSE_YOURE_NOT_IN_BATTLE], "SERVER_RESPONSE_YOURE_NOT_IN_BATTLE");
-    strcpy(server_message_s[SERVER_RESPONSE_YOURE_ALREADY_IN_BATTLE], "SERVER_RESPONSE_YOURE_ALREADY_IN_BATTLE");
-    strcpy(server_message_s[SERVER_RESPONSE_NOBODY_INVITE_YOU], "SERVER_RESPONSE_NOBODY_INVITE_YOU");
-    strcpy(server_message_s[SERVER_MESSAGE_DELIM], "SERVER_MESSAGE_DELIM");
-    strcpy(server_message_s[SERVER_MESSAGE_FRIEND_LOGIN], "SERVER_MESSAGE_FRIEND_LOGIN");
-    strcpy(server_message_s[SERVER_MESSAGE_FRIEND_LOGOUT], "SERVER_MESSAGE_FRIEND_LOGOUT");
-    strcpy(server_message_s[SERVER_MESSAGE_FRIEND_ACCEPT_BATTLE], "SERVER_MESSAGE_FRIEND_ACCEPT_BATTLE");
-    strcpy(server_message_s[SERVER_MESSAGE_FRIEND_REJECT_BATTLE], "SERVER_MESSAGE_FRIEND_REJECT_BATTLE");
-    strcpy(server_message_s[SERVER_MESSAGE_FRIEND_NOT_LOGIN], "SERVER_MESSAGE_FRIEND_NOT_LOGIN");
-    strcpy(server_message_s[SERVER_MESSAGE_FRIEND_ALREADY_IN_BATTLE], "SERVER_MESSAGE_FRIEND_ALREADY_IN_BATTLE");
-    strcpy(server_message_s[SERVER_MESSAGE_INVITE_TO_BATTLE], "SERVER_MESSAGE_INVITE_TO_BATTLE");
-    strcpy(server_message_s[SERVER_MESSAGE_USER_QUIT_BATTLE], "SERVER_MESSAGE_USER_QUIT_BATTLE");
-    strcpy(server_message_s[SERVER_MESSAGE_BATTLE_DISBANDED], "SERVER_MESSAGE_BATTLE_DISBANDED");
-    strcpy(server_message_s[SERVER_MESSAGE_BATTLE_INFORMATION], "SERVER_MESSAGE_BATTLE_INFORMATION");
-    strcpy(server_message_s[SERVER_MESSAGE_YOUR_MAGAZINE_IS_EMPTY], "SERVER_MESSAGE_YOUR_MAGAZINE_IS_EMPTY");
-    strcpy(server_message_s[SERVER_MESSAGE_YOU_ARE_DEAD], "SERVER_MESSAGE_YOU_ARE_DEAD");
-    strcpy(server_message_s[SERVER_MESSAGE_YOU_ARE_SHOOTED], "SERVER_MESSAGE_YOU_ARE_SHOOTED");
-    strcpy(server_message_s[SERVER_MESSAGE_YOU_ARE_TRAPPED_IN_MAGMA], "SERVER_MESSAGE_YOU_ARE_TRAPPED_IN_MAGMA");
-    strcpy(server_message_s[SERVER_MESSAGE_YOU_GOT_BLOOD_VIAL], "SERVER_MESSAGE_YOU_GOT_BLOOD_VIAL");
-    strcpy(server_message_s[SERVER_STATUS_QUIT], "SERVER_STATUS_QUIT");
+    server_message_s[SERVER_SAY_NOTHING] = (char*)"SERVER_SAY_NOTHING";
+    server_message_s[SERVER_RESPONSE_LOGIN_SUCCESS] = (char*)"SERVER_RESPONSE_LOGIN_SUCCESS";
+    server_message_s[SERVER_RESPONSE_YOU_HAVE_LOGINED] = (char*)"SERVER_RESPONSE_YOU_HAVE_LOGINED";
+    server_message_s[SERVER_RESPONSE_YOU_HAVE_NOT_LOGIN] = (char*)"SERVER_RESPONSE_YOU_HAVE_NOT_LOGIN";
+    server_message_s[SERVER_RESPONSE_LOGIN_FAIL_UNREGISTERED_USERID] = (char*)"SERVER_RESPONSE_LOGIN_FAIL_UNREGISTERED_USERID";
+    server_message_s[SERVER_RESPONSE_LOGIN_FAIL_ERROR_PASSWORD] = (char*)"SERVER_RESPONSE_LOGIN_FAIL_ERROR_PASSWORD";
+    server_message_s[SERVER_RESPONSE_LOGIN_FAIL_DUP_USERID] = (char*)"SERVER_RESPONSE_LOGIN_FAIL_DUP_USERID";
+    server_message_s[SERVER_RESPONSE_LOGIN_FAIL_SERVER_LIMITS] = (char*)"SERVER_RESPONSE_LOGIN_FAIL_SERVER_LIMITS";
+    server_message_s[SERVER_RESPONSE_ALL_USERS_INFO] = (char*)"SERVER_RESPONSE_ALL_USERS_INFO";
+    server_message_s[SERVER_RESPONSE_ALL_FRIENDS_INFO] = (char*)"SERVER_RESPONSE_ALL_FRIENDS_INFO";
+    server_message_s[SERVER_RESPONSE_LAUNCH_BATTLE_FAIL] = (char*)"SERVER_RESPONSE_LAUNCH_BATTLE_FAIL";
+    server_message_s[SERVER_RESPONSE_LAUNCH_BATTLE_SUCCESS] = (char*)"SERVER_RESPONSE_LAUNCH_BATTLE_SUCCESS";
+    server_message_s[SERVER_RESPONSE_YOURE_NOT_IN_BATTLE] = (char*)"SERVER_RESPONSE_YOURE_NOT_IN_BATTLE";
+    server_message_s[SERVER_RESPONSE_YOURE_ALREADY_IN_BATTLE] = (char*)"SERVER_RESPONSE_YOURE_ALREADY_IN_BATTLE";
+    server_message_s[SERVER_RESPONSE_NOBODY_INVITE_YOU] = (char*)"SERVER_RESPONSE_NOBODY_INVITE_YOU";
+    server_message_s[SERVER_MESSAGE_DELIM] = (char*)"SERVER_MESSAGE_DELIM";
+    server_message_s[SERVER_MESSAGE_FRIEND_LOGIN] = (char*)"SERVER_MESSAGE_FRIEND_LOGIN";
+    server_message_s[SERVER_MESSAGE_FRIEND_LOGOUT] = (char*)"SERVER_MESSAGE_FRIEND_LOGOUT";
+    server_message_s[SERVER_MESSAGE_FRIEND_ACCEPT_BATTLE] = (char*)"SERVER_MESSAGE_FRIEND_ACCEPT_BATTLE";
+    server_message_s[SERVER_MESSAGE_FRIEND_REJECT_BATTLE] = (char*)"SERVER_MESSAGE_FRIEND_REJECT_BATTLE";
+    server_message_s[SERVER_MESSAGE_FRIEND_NOT_LOGIN] = (char*)"SERVER_MESSAGE_FRIEND_NOT_LOGIN";
+    server_message_s[SERVER_MESSAGE_FRIEND_ALREADY_IN_BATTLE] = (char*)"SERVER_MESSAGE_FRIEND_ALREADY_IN_BATTLE";
+    server_message_s[SERVER_MESSAGE_INVITE_TO_BATTLE] = (char*)"SERVER_MESSAGE_INVITE_TO_BATTLE";
+    server_message_s[SERVER_MESSAGE_USER_QUIT_BATTLE] = (char*)"SERVER_MESSAGE_USER_QUIT_BATTLE";
+    server_message_s[SERVER_MESSAGE_BATTLE_DISBANDED] = (char*)"SERVER_MESSAGE_BATTLE_DISBANDED";
+    server_message_s[SERVER_MESSAGE_BATTLE_INFORMATION] = (char*)"SERVER_MESSAGE_BATTLE_INFORMATION";
+    server_message_s[SERVER_MESSAGE_YOUR_MAGAZINE_IS_EMPTY] = (char*)"SERVER_MESSAGE_YOUR_MAGAZINE_IS_EMPTY";
+    server_message_s[SERVER_MESSAGE_YOU_ARE_DEAD] = (char*)"SERVER_MESSAGE_YOU_ARE_DEAD";
+    server_message_s[SERVER_MESSAGE_YOU_ARE_SHOOTED] = (char*)"SERVER_MESSAGE_YOU_ARE_SHOOTED";
+    server_message_s[SERVER_MESSAGE_YOU_ARE_TRAPPED_IN_MAGMA] = (char*)"SERVER_MESSAGE_YOU_ARE_TRAPPED_IN_MAGMA";
+    server_message_s[SERVER_MESSAGE_YOU_GOT_BLOOD_VIAL] = (char*)"SERVER_MESSAGE_YOU_GOT_BLOOD_VIAL";
+    server_message_s[SERVER_STATUS_QUIT] = (char*)"SERVER_STATUS_QUIT";
 
     recv_msg_func[SERVER_RESPONSE_REGISTER_SUCCESS] = serv_response_register_success;
     recv_msg_func[SERVER_RESPONSE_REGISTER_FAIL] = serv_response_register_fail;

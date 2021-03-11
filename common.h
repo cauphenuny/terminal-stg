@@ -1,7 +1,7 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#define VERSION "v1.7.0"
+#define VERSION "v2.0.0"
 
 #include <cstdio>
 #include <cstdlib>
@@ -126,6 +126,9 @@
 #define BATTLE_W 60
 #define BATTLE_H (SCR_H - 2)
 
+#define FFA_MAP_W BATTLE_W
+#define FFA_MAP_H BATTLE_H
+
 #define IPADDR_SIZE 24
 #define USERNAME_SIZE  12
 #define MSG_SIZE 40
@@ -239,8 +242,19 @@ enum {
     ITEM_GRASS,
     ITEM_BLOOD_VIAL,
     ITEM_END,
-    ITEM_BLANK,
     ITEM_BULLET,
+};
+
+enum {
+    MAP_ITEM_NONE,
+    MAP_ITEM_MAGAZINE,
+    MAP_ITEM_MAGMA,
+    MAP_ITEM_GRASS,
+    MAP_ITEM_BLOOD_VIAL,
+    MAP_ITEM_END,
+    MAP_ITEM_MY_BULLET,
+    MAP_ITEM_OTHER_BULLET,
+    MAP_ITEM_USER,
 };
 
 enum {
@@ -306,10 +320,12 @@ typedef struct server_message_t {
         } all_users[USER_CNT];
 
         struct {
-            uint8_t life, index, bullets_num;
+            uint8_t life, index, bullets_num, color;
             pos_t user_pos[USER_CNT];
-            uint8_t item_kind[MAX_ITEM];
-            pos_t item_pos[MAX_ITEM];
+            uint8_t user_color[USER_CNT];
+            uint8_t map[BATTLE_H][BATTLE_W / 2 + 1];
+            //pos_t item_pos[MAX_ITEM];
+            //uint8_t item_kind[MAX_ITEM];
         };
 
         struct {
@@ -318,39 +334,6 @@ typedef struct server_message_t {
         }; // for message
     };
 } server_message_t;
-
-
-char signal_name_s[128][10];
-void init_constants() {
-    strcpy(signal_name_s[SIGHUP   ], (char*)"SIGHUP");
-    strcpy(signal_name_s[SIGINT   ], (char*)"SIGINT");
-    strcpy(signal_name_s[SIGQUIT  ], (char*)"SIGQUIT");
-    strcpy(signal_name_s[SIGILL   ], (char*)"SIGILL" );
-    strcpy(signal_name_s[SIGABRT  ], (char*)"SIGABRT");
-    strcpy(signal_name_s[SIGFPE   ], (char*)"SIGFPE" );
-    strcpy(signal_name_s[SIGKILL  ], (char*)"SIGKILL");
-    strcpy(signal_name_s[SIGSEGV  ], (char*)"SIGSEGV");
-    strcpy(signal_name_s[SIGPIPE  ], (char*)"SIGPIPE");
-    strcpy(signal_name_s[SIGALRM  ], (char*)"SIGALRM");
-    strcpy(signal_name_s[SIGTERM  ], (char*)"SIGTERM");
-    strcpy(signal_name_s[SIGUSR1  ], (char*)"SIGUSR1");
-    strcpy(signal_name_s[SIGUSR2  ], (char*)"SIGUSR2");
-    strcpy(signal_name_s[SIGCHLD  ], (char*)"SIGCHLD");
-    strcpy(signal_name_s[SIGCONT  ], (char*)"SIGCONT");
-    strcpy(signal_name_s[SIGSTOP  ], (char*)"SIGSTOP");
-    strcpy(signal_name_s[SIGTSTP  ], (char*)"SIGTSTP");
-    strcpy(signal_name_s[SIGTTIN  ], (char*)"SIGTTIN");
-    strcpy(signal_name_s[SIGTTOU  ], (char*)"SIGTTOU");
-    strcpy(signal_name_s[SIGBUS   ], (char*)"SIGBUS" );
-    strcpy(signal_name_s[SIGPOLL  ], (char*)"SIGPOLL");
-    strcpy(signal_name_s[SIGPROF  ], (char*)"SIGPROF");
-    strcpy(signal_name_s[SIGSYS   ], (char*)"SIGSYS" );
-    strcpy(signal_name_s[SIGTRAP  ], (char*)"SIGTRAP");
-    strcpy(signal_name_s[SIGURG   ], (char*)"SIGURG" );
-    strcpy(signal_name_s[SIGVTALRM], (char*)"SIGVTALRM");
-    strcpy(signal_name_s[SIGXCPU  ], (char*)"SIGXCPU");
-    strcpy(signal_name_s[SIGXFSZ  ], (char*)"SIGXFSZ");
-};
 
 #define BLACK                "\e[0;30m"
 #define L_BLACK              "\e[1;30m"
@@ -376,5 +359,72 @@ void init_constants() {
 #define CLEAR                "\e[2J"
 #define CLRLINE              "\r\e[K"
 #define NONE                 "\e[0m"
+
+char* signal_name_s[128];
+char* color_s[128];
+char*  map_s[128];
+int item_to_map[128];
+int color_s_size;
+
+void init_constants() {
+    map_s[MAP_ITEM_NONE] = (char*)" ";
+    map_s[MAP_ITEM_MAGAZINE] = (char*)"+";
+    map_s[MAP_ITEM_MAGMA] = (char*)"X";
+    map_s[MAP_ITEM_GRASS] = (char*)"█";
+    map_s[MAP_ITEM_BLOOD_VIAL] = (char*)"*";
+    map_s[MAP_ITEM_END] = (char*)" ";
+    map_s[MAP_ITEM_MY_BULLET] = (char*)".";
+    map_s[MAP_ITEM_OTHER_BULLET] = (char*)".";
+
+    item_to_map[ITEM_NONE] = MAP_ITEM_NONE;
+    item_to_map[ITEM_MAGAZINE] = MAP_ITEM_MAGAZINE;
+    item_to_map[ITEM_MAGMA] = MAP_ITEM_MAGMA;
+    item_to_map[ITEM_GRASS] = MAP_ITEM_GRASS;
+    item_to_map[ITEM_BLOOD_VIAL] = MAP_ITEM_BLOOD_VIAL;
+    item_to_map[ITEM_END] = MAP_ITEM_END;
+
+    signal_name_s[SIGHUP   ] = (char*)"SIGHUP";
+    signal_name_s[SIGINT   ] = (char*)"SIGINT";
+    signal_name_s[SIGQUIT  ] = (char*)"SIGQUIT";
+    signal_name_s[SIGILL   ] = (char*)"SIGILL" ;
+    signal_name_s[SIGABRT  ] = (char*)"SIGABRT";
+    signal_name_s[SIGFPE   ] = (char*)"SIGFPE" ;
+    signal_name_s[SIGKILL  ] = (char*)"SIGKILL";
+    signal_name_s[SIGSEGV  ] = (char*)"SIGSEGV";
+    signal_name_s[SIGPIPE  ] = (char*)"SIGPIPE";
+    signal_name_s[SIGALRM  ] = (char*)"SIGALRM";
+    signal_name_s[SIGTERM  ] = (char*)"SIGTERM";
+    signal_name_s[SIGUSR1  ] = (char*)"SIGUSR1";
+    signal_name_s[SIGUSR2  ] = (char*)"SIGUSR2";
+    signal_name_s[SIGCHLD  ] = (char*)"SIGCHLD";
+    signal_name_s[SIGCONT  ] = (char*)"SIGCONT";
+    signal_name_s[SIGSTOP  ] = (char*)"SIGSTOP";
+    signal_name_s[SIGTSTP  ] = (char*)"SIGTSTP";
+    signal_name_s[SIGTTIN  ] = (char*)"SIGTTIN";
+    signal_name_s[SIGTTOU  ] = (char*)"SIGTTOU";
+    signal_name_s[SIGBUS   ] = (char*)"SIGBUS" ;
+    signal_name_s[SIGPOLL  ] = (char*)"SIGPOLL";
+    signal_name_s[SIGPROF  ] = (char*)"SIGPROF";
+    signal_name_s[SIGSYS   ] = (char*)"SIGSYS" ;
+    signal_name_s[SIGTRAP  ] = (char*)"SIGTRAP";
+    signal_name_s[SIGURG   ] = (char*)"SIGURG" ;
+    signal_name_s[SIGVTALRM] = (char*)"SIGVTALRM";
+    signal_name_s[SIGXCPU  ] = (char*)"SIGXCPU";
+    signal_name_s[SIGXFSZ  ] = (char*)"SIGXFSZ";
+    color_s[0] = (char*)NONE;
+    color_s[1] = (char*)RED;
+    color_s[2] = (char*)YELLOW;
+    color_s[3] = (char*)GREEN;
+    color_s[4] = (char*)BLUE;
+    color_s[5] = (char*)PURPLE;
+    color_s[6] = (char*)CYAN;
+    color_s[7] = (char*)L_RED;
+    color_s[8] = (char*)L_GREEN;
+    color_s[9] = (char*)L_BLUE;
+    color_s[10] = (char*)L_PURPLE;
+    color_s[11] = (char*)L_CYAN;
+    color_s_size = 11;
+};
+
 
 #endif

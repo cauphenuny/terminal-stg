@@ -446,8 +446,9 @@ void check_user_status(int uid) {
                         battles[bid].users[uid].nr_bullets = MAX_BULLETS;
                     }
                     send_to_client(uid, SERVER_MESSAGE_YOU_GOT_MAGAZINE);
-                    battles[bid].items[i].kind = ITEM_BLANK;
+                    //battles[bid].items[i].kind = ITEM_BLANK;
                     battles[bid].items[i].times = 0;
+                    battles[bid].items[i].is_used = false;
                     break;
                 }
                 case ITEM_MAGMA: {
@@ -457,8 +458,9 @@ void check_user_status(int uid) {
                     send_to_client(uid, SERVER_MESSAGE_YOU_ARE_TRAPPED_IN_MAGMA);
                     if (battles[bid].items[i].count <= 0) {
                         log("magma %d is exhausted\n", i);
-                        battles[bid].items[i].kind = ITEM_BLANK;
+                        //battles[bid].items[i].kind = ITEM_BLANK;
                         //battles[bid].num_of_other--;
+                        battles[bid].items[i].is_used = false;
                     }
                     break;
                 }
@@ -469,10 +471,11 @@ void check_user_status(int uid) {
                         log("user #%d %s@[%s] life exceeds max value\n", uid, sessions[uid].user_name, sessions[uid].ip_addr);
                         battles[bid].users[uid].life = MAX_LIFE;
                     }
-                    battles[bid].items[i].kind = ITEM_BLANK;
+                    //battles[bid].items[i].kind = ITEM_BLANK;
                     battles[bid].items[i].times = 0;
                     //battles[bid].num_of_other--;
                     send_to_client(uid, SERVER_MESSAGE_YOU_GOT_BLOOD_VIAL);
+                    battles[bid].items[i].is_used = false;
                     break;
                 }
                 case ITEM_BULLET: {
@@ -480,8 +483,9 @@ void check_user_status(int uid) {
                         battles[bid].users[uid].life = max(battles[bid].users[uid].life - 1, 0);
                         log("user #%d %s@[%s] is shooted\n", uid, sessions[uid].user_name, sessions[uid].ip_addr);
                         send_to_client(uid, SERVER_MESSAGE_YOU_ARE_SHOOTED);
-                        battles[bid].items[i].kind = ITEM_BLANK;
+                        //battles[bid].items[i].kind = ITEM_BLANK;
                         battles[bid].items[i].times = 0;
+                        battles[bid].items[i].is_used = false;
                         break;
                     }
                     break;
@@ -512,8 +516,9 @@ void check_who_is_shooted(int bid) {
                 battles[bid].users[j].life--;
                 log("user #%d %s@[%s] is shooted\n", j, sessions[j].user_name, sessions[j].ip_addr);
                 send_to_client(j, SERVER_MESSAGE_YOU_ARE_SHOOTED);
-                battles[bid].items[i].kind = ITEM_BLANK;
+                //battles[bid].items[i].kind = ITEM_BLANK;
                 battles[bid].items[i].times = 0;
+                battles[bid].items[i].is_used = false;
                 break;
             }
         }
@@ -537,27 +542,56 @@ void check_who_is_dead(int bid) {
 void check_item_count(int bid) {
     //log("call func %s\n", __func__);
     for (int i = 0; i < MAX_ITEM; i++) {
-        if (battles[bid].items[i].kind == ITEM_BLANK) {
-            if (battles[bid].items[i].times) {
-                battles[bid].items[i].kind = ITEM_NONE;
-                battles[bid].items[i].times = 0;
-                battles[bid].items[i].is_used = false;
-                log("free item #%d\n", i);
-            } else {
-                battles[bid].items[i].times = 1;
-                continue;
-            }
-        } else if (battles[bid].items[i].times) {
+        if (battles[bid].items[i].times) {
             battles[bid].items[i].times--;
             if (!battles[bid].items[i].times) {
                 if (battles[bid].items[i].kind < ITEM_END) {
                     battles[bid].num_of_other--;
+                    battles[bid].items[i].is_used = false;
                 }
-                battles[bid].items[i].kind = ITEM_BLANK;
+                //battles[bid].items[i].kind = ITEM_BLANK;
             }
         }
     }
     //log("check completed...\n");
+}
+
+void render_map_for_user(int uid, server_message_t* psm) {
+    int bid = sessions[uid].bid;
+    int map[BATTLE_H][BATTLE_W] = {0};
+    for (int i = 0, x, y; i < MAX_ITEM; i++) {
+        x = battles[bid].items[i].pos.x;
+        y = battles[bid].items[i].pos.y;
+        if (battles[bid].items[i].is_used) {
+            switch (battles[bid].items[i].kind) {
+                case ITEM_BULLET: {
+                    if (battles[bid].items[i].owner == uid) {
+                        map[y][x] = MAP_ITEM_MY_BULLET;
+                    } else {
+                        map[y][x] = MAP_ITEM_OTHER_BULLET;
+                    }
+                    break;
+                }
+                case ITEM_NONE: {
+                    break;
+                }
+                default: {
+                    map[y][x] = item_to_map[battles[bid].items[i].kind];
+                }
+            }
+            //sm.item_kind[i] = battles[bid].items[i].kind;
+            //sm.item_pos[i].x = battles[bid].items[i].pos.x;
+            //sm.item_pos[i].y = battles[bid].items[i].pos.y;
+        }
+    }
+    for (int i = 0; i < BATTLE_H; i++) {
+        for (int j = 0; j < BATTLE_W; j += 2) {
+            //psm->map[i][j] = map[i][j];
+            //if (psm->map[i][j] != 0) log("set item #%d\n", psm->map[i][j]);
+            psm->map[i][j >> 1] =
+                (map[i][j]) | (map[i][j + 1] << 4);
+        }
+    }
 }
 
 void inform_all_user_battle_state(int bid) {
@@ -567,27 +601,31 @@ void inform_all_user_battle_state(int bid) {
         if (battles[bid].users[i].battle_state == BATTLE_STATE_LIVE) {
             sm.user_pos[i].x = battles[bid].users[i].pos.x;
             sm.user_pos[i].y = battles[bid].users[i].pos.y;
+            sm.user_color[i] = i % color_s_size + 1;
         } else {
             sm.user_pos[i].x = -1;
             sm.user_pos[i].y = -1;
+            sm.user_color[i] = 0;
         }
     }
 
-    for (int i = 0; i < MAX_ITEM; i++) {
-        if (battles[bid].items[i].is_used) {
-            sm.item_kind[i] = battles[bid].items[i].kind;
-            sm.item_pos[i].x = battles[bid].items[i].pos.x;
-            sm.item_pos[i].y = battles[bid].items[i].pos.y;
-        } else {
-            sm.item_kind[i] = ITEM_NONE;
-        }
-    }
+    //for (int i = 0; i < MAX_ITEM; i++) {
+    //    if (battles[bid].items[i].is_used) {
+    //        //sm.item_kind[i] = battles[bid].items[i].kind;
+    //        //sm.item_pos[i].x = battles[bid].items[i].pos.x;
+    //        //sm.item_pos[i].y = battles[bid].items[i].pos.y;
+    //    } else {
+    //        //sm.item_kind[i] = ITEM_NONE;
+    //    }
+    //}
 
     for (int i = 0; i < USER_CNT; i++) {
-        sm.index = i;
-        sm.life = battles[bid].users[i].life;
-        sm.bullets_num = battles[bid].users[i].nr_bullets;
         if (battles[bid].users[i].battle_state != BATTLE_STATE_UNJOINED) {
+            render_map_for_user(i, &sm);
+            sm.index = i;
+            sm.life = battles[bid].users[i].life;
+            sm.bullets_num = battles[bid].users[i].nr_bullets;
+            sm.color = i % color_s_size + 1;
             wrap_send(sessions[i].conn, &sm);
         }
     }
@@ -1333,6 +1371,8 @@ void terminate_entrance(int recved_signal) {
 }
 
 int main(int argc, char* argv[]) {
+    init_constants();
+    init_handler();
     if (argc == 2) {
         port = atoi(argv[1]);
     }
@@ -1348,6 +1388,7 @@ int main(int argc, char* argv[]) {
         pthread_mutex_init(&items_lock[i], NULL);
     }
     log("server " VERSION "\n");
+    //log("message_size = %ld\n", sizeof(server_message_t));
 
     server_fd = server_start();
     load_user_list();
