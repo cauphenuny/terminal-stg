@@ -1378,11 +1378,13 @@ void draw_players(server_message_t* psm) {
         }
     }
     set_cursor(BATTLE_W, 0);
-    printf("Current player:");
+    printf("players:");
     for (int i = 0, p = 0; i < USER_CNT; i++) {
         if (psm->user_namecolor[i] != 0) {
             set_cursor(BATTLE_W, ++p);
             printf("%s%s%s", color_s[psm->user_namecolor[i]], psm->user_name[i], color_s[0]);
+            set_cursor(BATTLE_W + 10, p);
+            printf("50★  1.0");
         }
     }
     fflush(stdout);

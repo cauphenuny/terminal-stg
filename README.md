@@ -30,13 +30,17 @@
 	|      *      | blood vial|
   4. operations in battle
     * w s a d can move around
-	* k j h l can fire
-    * y n . o can fire
-    * K J H L can aoe fire
+    * fire (8 directions):
+        ```
+        y k o
+        h   l
+        n j .
+        ```
+    * K J H L can fire AOE
   5. quit the battle
     * note that even you die, you won't be quited from the battle
 	but your role will be changed from player into witness. If you
 	want to return the last ui, you need to type `q`.
 
-* update log
-  see update.txt
+* recently update
+  see update.md
