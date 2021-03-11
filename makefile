@@ -2,11 +2,11 @@
 
 all:server client
 
-server:server.c common.h
-	gcc -Wall -std=c11 server.c -o server -lpthread -ggdb
+server:server.cpp common.h func.h
+	g++ -Wall -std=c++11 server.cpp -o server -lpthread -ggdb
 
-client:client.c common.h
-	gcc -Wall -std=c11 client.c -o client -lpthread -ggdb
+client:client.cpp common.h func.h
+	g++ -Wall -std=c++11 client.cpp -o client -lpthread -ggdb
 
 clean:
 	rm server client

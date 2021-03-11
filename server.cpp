@@ -1,12 +1,14 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <pthread.h>
-#include <signal.h>
-#include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-#include <time.h>
-#include <math.h>
+#include <unistd.h>
+
+#include <csignal>
+#include <cstring>
+#include <ctime>
+#include <cmath>
 
 #include "common.h"
 #include "func.h"
@@ -21,8 +23,6 @@ pthread_mutex_t battles_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t items_lock[USER_CNT];
 
 int server_fd = 0, port = 50000, port_range = 100;
-
-int usleep(int usec);
 
 void wrap_recv(int conn, client_message_t* pcm);
 void wrap_send(int conn, server_message_t* psm);
@@ -1100,7 +1100,7 @@ int client_command_fire_aoe_right(int uid) {
 }
 
 int client_command_ban_user(int uid) {
-    if (!sessions[uid].is_admin) return say_to_client(uid, "you are not admin!"), 0;
+    if (!sessions[uid].is_admin) return say_to_client(uid, (char*)"you are not admin!"), 0;
     if (sessions[uid].conn >= 0) {
         log("admin banned user #%d %s@[%s]\n", uid, sessions[uid].user_name, sessions[uid].ip_addr);
         send_to_client(uid, SERVER_STATUS_QUIT);
@@ -1123,47 +1123,49 @@ int client_message_fatal(int uid) {
     return 0;
 }
 
-static int (*handler[])(int) = {
-    [CLIENT_MESSAGE_FATAL] = client_message_fatal,
+static int (*handler[256])(int);
 
-    [CLIENT_COMMAND_USER_QUIT] = client_command_quit,
-    [CLIENT_COMMAND_USER_REGISTER] = client_command_user_register,
-    [CLIENT_COMMAND_USER_LOGIN] = client_command_user_login,
-    [CLIENT_COMMAND_USER_LOGOUT] = client_command_user_logout,
+void init_handler() {
+    handler[CLIENT_MESSAGE_FATAL] = client_message_fatal,
 
-    [CLIENT_COMMAND_FETCH_ALL_USERS] = client_command_fetch_all_users,
-    [CLIENT_COMMAND_FETCH_ALL_FRIENDS] = client_command_fetch_all_friends,
+    handler[CLIENT_COMMAND_USER_QUIT] = client_command_quit,
+    handler[CLIENT_COMMAND_USER_REGISTER] = client_command_user_register,
+    handler[CLIENT_COMMAND_USER_LOGIN] = client_command_user_login,
+    handler[CLIENT_COMMAND_USER_LOGOUT] = client_command_user_logout,
 
-    [CLIENT_COMMAND_LAUNCH_BATTLE] = client_command_launch_battle,
-    [CLIENT_COMMAND_QUIT_BATTLE] = client_command_quit_battle,
-    [CLIENT_COMMAND_ACCEPT_BATTLE] = client_command_accept_battle,
-    [CLIENT_COMMAND_REJECT_BATTLE] = client_command_reject_battle,
-    [CLIENT_COMMAND_INVITE_USER] = client_command_invite_user,
+    handler[CLIENT_COMMAND_FETCH_ALL_USERS] = client_command_fetch_all_users,
+    handler[CLIENT_COMMAND_FETCH_ALL_FRIENDS] = client_command_fetch_all_friends,
 
-    [CLIENT_COMMAND_SEND_MESSAGE] = client_command_send_message,
+    handler[CLIENT_COMMAND_LAUNCH_BATTLE] = client_command_launch_battle,
+    handler[CLIENT_COMMAND_QUIT_BATTLE] = client_command_quit_battle,
+    handler[CLIENT_COMMAND_ACCEPT_BATTLE] = client_command_accept_battle,
+    handler[CLIENT_COMMAND_REJECT_BATTLE] = client_command_reject_battle,
+    handler[CLIENT_COMMAND_INVITE_USER] = client_command_invite_user,
 
-    [CLIENT_COMMAND_MOVE_UP] = client_command_move_up,
-    [CLIENT_COMMAND_MOVE_DOWN] = client_command_move_down,
-    [CLIENT_COMMAND_MOVE_LEFT] = client_command_move_left,
-    [CLIENT_COMMAND_MOVE_RIGHT] = client_command_move_right,
+    handler[CLIENT_COMMAND_SEND_MESSAGE] = client_command_send_message,
 
-    [CLIENT_COMMAND_FIRE_UP] = client_command_fire_up,
-    [CLIENT_COMMAND_FIRE_DOWN] = client_command_fire_down,
-    [CLIENT_COMMAND_FIRE_LEFT] = client_command_fire_left,
-    [CLIENT_COMMAND_FIRE_RIGHT] = client_command_fire_right,
+    handler[CLIENT_COMMAND_MOVE_UP] = client_command_move_up,
+    handler[CLIENT_COMMAND_MOVE_DOWN] = client_command_move_down,
+    handler[CLIENT_COMMAND_MOVE_LEFT] = client_command_move_left,
+    handler[CLIENT_COMMAND_MOVE_RIGHT] = client_command_move_right,
 
-    [CLIENT_COMMAND_FIRE_UP_LEFT] = client_command_fire_up_left,
-    [CLIENT_COMMAND_FIRE_UP_RIGHT] = client_command_fire_up_right,
-    [CLIENT_COMMAND_FIRE_DOWN_LEFT] = client_command_fire_down_left,
-    [CLIENT_COMMAND_FIRE_DOWN_RIGHT] = client_command_fire_down_right,
+    handler[CLIENT_COMMAND_FIRE_UP] = client_command_fire_up,
+    handler[CLIENT_COMMAND_FIRE_DOWN] = client_command_fire_down,
+    handler[CLIENT_COMMAND_FIRE_LEFT] = client_command_fire_left,
+    handler[CLIENT_COMMAND_FIRE_RIGHT] = client_command_fire_right,
 
-    [CLIENT_COMMAND_FIRE_AOE_UP] = client_command_fire_aoe_up,
-    [CLIENT_COMMAND_FIRE_AOE_DOWN] = client_command_fire_aoe_down,
-    [CLIENT_COMMAND_FIRE_AOE_LEFT] = client_command_fire_aoe_left,
-    [CLIENT_COMMAND_FIRE_AOE_RIGHT] = client_command_fire_aoe_right,
+    handler[CLIENT_COMMAND_FIRE_UP_LEFT] = client_command_fire_up_left,
+    handler[CLIENT_COMMAND_FIRE_UP_RIGHT] = client_command_fire_up_right,
+    handler[CLIENT_COMMAND_FIRE_DOWN_LEFT] = client_command_fire_down_left,
+    handler[CLIENT_COMMAND_FIRE_DOWN_RIGHT] = client_command_fire_down_right,
 
-    [CLIENT_COMMAND_BAN_USER] = client_command_ban_user,
-};
+    handler[CLIENT_COMMAND_FIRE_AOE_UP] = client_command_fire_aoe_up,
+    handler[CLIENT_COMMAND_FIRE_AOE_DOWN] = client_command_fire_aoe_down,
+    handler[CLIENT_COMMAND_FIRE_AOE_LEFT] = client_command_fire_aoe_left,
+    handler[CLIENT_COMMAND_FIRE_AOE_RIGHT] = client_command_fire_aoe_right,
+
+    handler[CLIENT_COMMAND_BAN_USER] = client_command_ban_user;
+}
 
 void wrap_recv(int conn, client_message_t* pcm) {
     size_t total_len = 0;

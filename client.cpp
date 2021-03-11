@@ -1,11 +1,12 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <pthread.h>
-#include <signal.h>
-#include <stdarg.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+
+#include <csignal>
+#include <cstdarg>
 
 #include "common.h"
 
@@ -21,13 +22,11 @@ static int scr_actual_h = 0;
 static int user_hp = 0;
 static int user_bullets = 0;
 static int user_state = USER_STATE_NOT_LOGIN;
-static char* user_name = "<unknown>";
-static char* log_file = "runtime.log";
-static char* user_state_s[] = {
-    [USER_STATE_NOT_LOGIN] = "not login",
-    [USER_STATE_LOGIN] = "login",
-    [USER_STATE_BATTLE] = "battle",
-};
+static char* user_name = (char*)"<unknown>";
+static char* log_file = (char*)"runtime.log";
+
+#define USER_STATE_LEN 16
+static char user_state_s[8][USER_STATE_LEN];
 
 static int client_fd = -1;
 
@@ -82,40 +81,7 @@ struct catalog_t {
 
 typedef struct catalog_t catalog_t;
 
-static char* server_message_s[] = {
-    [SERVER_SAY_NOTHING] = "SERVER_SAY_NOTHING",
-    [SERVER_RESPONSE_LOGIN_SUCCESS] = "SERVER_RESPONSE_LOGIN_SUCCESS",
-    [SERVER_RESPONSE_YOU_HAVE_LOGINED] = "SERVER_RESPONSE_YOU_HAVE_LOGINED",
-    [SERVER_RESPONSE_YOU_HAVE_NOT_LOGIN] = "SERVER_RESPONSE_YOU_HAVE_NOT_LOGIN",
-    [SERVER_RESPONSE_LOGIN_FAIL_UNREGISTERED_USERID] = "SERVER_RESPONSE_LOGIN_FAIL_UNREGISTERED_USERID",
-    [SERVER_RESPONSE_LOGIN_FAIL_ERROR_PASSWORD] = "SERVER_RESPONSE_LOGIN_FAIL_ERROR_PASSWORD",
-    [SERVER_RESPONSE_LOGIN_FAIL_DUP_USERID] = "SERVER_RESPONSE_LOGIN_FAIL_DUP_USERID",
-    [SERVER_RESPONSE_LOGIN_FAIL_SERVER_LIMITS] = "SERVER_RESPONSE_LOGIN_FAIL_SERVER_LIMITS",
-    [SERVER_RESPONSE_ALL_USERS_INFO] = "SERVER_RESPONSE_ALL_USERS_INFO",
-    [SERVER_RESPONSE_ALL_FRIENDS_INFO] = "SERVER_RESPONSE_ALL_FRIENDS_INFO",
-    [SERVER_RESPONSE_LAUNCH_BATTLE_FAIL] = "SERVER_RESPONSE_LAUNCH_BATTLE_FAIL",
-    [SERVER_RESPONSE_LAUNCH_BATTLE_SUCCESS] = "SERVER_RESPONSE_LAUNCH_BATTLE_SUCCESS",
-    [SERVER_RESPONSE_YOURE_NOT_IN_BATTLE] = "SERVER_RESPONSE_YOURE_NOT_IN_BATTLE",
-    [SERVER_RESPONSE_YOURE_ALREADY_IN_BATTLE] = "SERVER_RESPONSE_YOURE_ALREADY_IN_BATTLE",
-    [SERVER_RESPONSE_NOBODY_INVITE_YOU] = "SERVER_RESPONSE_NOBODY_INVITE_YOU",
-    [SERVER_MESSAGE_DELIM] = "SERVER_MESSAGE_DELIM",
-    [SERVER_MESSAGE_FRIEND_LOGIN] = "SERVER_MESSAGE_FRIEND_LOGIN",
-    [SERVER_MESSAGE_FRIEND_LOGOUT] = "SERVER_MESSAGE_FRIEND_LOGOUT",
-    [SERVER_MESSAGE_FRIEND_ACCEPT_BATTLE] = "SERVER_MESSAGE_FRIEND_ACCEPT_BATTLE",
-    [SERVER_MESSAGE_FRIEND_REJECT_BATTLE] = "SERVER_MESSAGE_FRIEND_REJECT_BATTLE",
-    [SERVER_MESSAGE_FRIEND_NOT_LOGIN] = "SERVER_MESSAGE_FRIEND_NOT_LOGIN",
-    [SERVER_MESSAGE_FRIEND_ALREADY_IN_BATTLE] = "SERVER_MESSAGE_FRIEND_ALREADY_IN_BATTLE",
-    [SERVER_MESSAGE_INVITE_TO_BATTLE] = "SERVER_MESSAGE_INVITE_TO_BATTLE",
-    [SERVER_MESSAGE_USER_QUIT_BATTLE] = "SERVER_MESSAGE_USER_QUIT_BATTLE",
-    [SERVER_MESSAGE_BATTLE_DISBANDED] = "SERVER_MESSAGE_BATTLE_DISBANDED",
-    [SERVER_MESSAGE_BATTLE_INFORMATION] = "SERVER_MESSAGE_BATTLE_INFORMATION",
-    [SERVER_MESSAGE_YOUR_MAGAZINE_IS_EMPTY] = "SERVER_MESSAGE_YOUR_MAGAZINE_IS_EMPTY",
-    [SERVER_MESSAGE_YOU_ARE_DEAD] = "SERVER_MESSAGE_YOU_ARE_DEAD",
-    [SERVER_MESSAGE_YOU_ARE_SHOOTED] = "SERVER_MESSAGE_YOU_ARE_SHOOTED",
-    [SERVER_MESSAGE_YOU_ARE_TRAPPED_IN_MAGMA] = "SERVER_MESSAGE_YOU_ARE_TRAPPED_IN_MAGMA",
-    [SERVER_MESSAGE_YOU_GOT_BLOOD_VIAL] = "SERVER_MESSAGE_YOU_GOT_BLOOD_VIAL",
-    [SERVER_STATUS_QUIT] = "SERVER_STATUS_QUIT",
-};
+static char server_message_s[256][64];
 
 void strlwr(char* s) {
     while (*s) {
@@ -321,7 +287,7 @@ int button_quit_private() {
 
 int button_logout() {
     wlog("call button handler %s\n", __func__);
-    user_name = "<unknown>";
+    strcpy(user_name, "<unknown>");
     user_state = USER_STATE_NOT_LOGIN;
     send_command(CLIENT_COMMAND_USER_LOGOUT);
     bottom_bar_output(0, "logout");
@@ -537,7 +503,7 @@ char* readline() {
                 break;
             }
             default: {
-                if (line_ptr < sizeof(line) - 1
+                if (line_ptr < (int)sizeof(line) - 1
                     && 0x20 <= ch && ch < 0x80) {
                     line[line_ptr++] = ch;
                     fputc(ch, stdout);
@@ -553,14 +519,14 @@ char* readline() {
 }
 
 char* sformat(const char* format, ...) {
-    static char text[100];
+    static char text[1024];
 
     va_list ap;
     va_start(ap, format);
     int len = vsprintf(text, format, ap);
     va_end(ap);
 
-    if (len >= sizeof(text))
+    if (len >= (int)sizeof(text))
         eprintf("buffer overflow\n");
 
     return text;
@@ -596,7 +562,7 @@ void write_log(const char* format, ...) {
 }
 
 void display_user_state() {
-    assert(user_state <= sizeof(user_state_s) / sizeof(user_state_s[0]));
+    assert(user_state <= (int)sizeof(user_state_s) / (int)sizeof(user_state_s[0]));
     bottom_bar_output(-1, "name: %s  HP: %d  energy: %d  state: %s", user_name, user_hp, user_bullets, user_state_s[user_state]);
 }
 
@@ -705,7 +671,7 @@ int cmd_tell(char* args) {
     return 0;
 }
 
-int cmd_fuck() {
+int cmd_fuck(char* args) {
     send_command(CLIENT_MESSAGE_FATAL);
     return 0;
 }
@@ -749,7 +715,7 @@ static struct {
     {"help", cmd_help},
 };
 
-#define NR_HANDLER (sizeof(command_handler) / sizeof(command_handler[0]))
+#define NR_HANDLER ((int)sizeof(command_handler) / (int)sizeof(command_handler[0]))
 
 void read_and_execute_command() {
     char* command = accept_input("command: ");
@@ -1165,7 +1131,7 @@ int serv_response_all_users_info(server_message_t* psm) {
             len += sprintf(users + len, "%s, ", psm->all_users[i].user_name);
         }
     }
-    if (len > sizeof(users) - 1)
+    if (len > (int)sizeof(users) - 1)
         eprintf("buffer overflow\n");
 
     users[len - 2] = 0;
@@ -1382,7 +1348,7 @@ void log_psm_info(server_message_t* psm) {
 
     len += sprintf(p + len, "\n");
 
-    if (len > sizeof(s) - 1)
+    if (len > (int)sizeof(s) - 1)
         eprintf("buffer overflow\n");
 
     wlog("battle info:\n%s\n", s);
@@ -1444,44 +1410,7 @@ int serv_message(server_message_t* psm) {
     return 0;
 }
 
-static int (*recv_msg_func[])(server_message_t*) = {
-    [SERVER_RESPONSE_REGISTER_SUCCESS] = serv_response_register_success,
-    [SERVER_RESPONSE_REGISTER_FAIL] = serv_response_register_fail,
-    [SERVER_RESPONSE_YOU_HAVE_REGISTERED] = serv_response_you_have_registered,
-    [SERVER_RESPONSE_LOGIN_SUCCESS] = serv_response_login_success,
-    [SERVER_RESPONSE_YOU_HAVE_NOT_LOGIN] = serv_response_you_have_not_login,
-    [SERVER_RESPONSE_LOGIN_FAIL_UNREGISTERED_USERID] = serv_response_login_fail_unregistered_userid,
-    [SERVER_RESPONSE_LOGIN_FAIL_ERROR_PASSWORD] = serv_response_login_fail_error_password,
-    [SERVER_RESPONSE_LOGIN_FAIL_DUP_USERID] = serv_response_login_fail_dup_userid,
-    [SERVER_RESPONSE_LOGIN_FAIL_SERVER_LIMITS] = serv_response_login_fail_server_limits,
-    [SERVER_RESPONSE_YOU_HAVE_LOGINED] = serv_response_you_have_logined,
-    [SERVER_RESPONSE_ALL_USERS_INFO] = serv_response_all_users_info,
-    [SERVER_RESPONSE_ALL_FRIENDS_INFO] = serv_response_all_friends_info,
-    [SERVER_RESPONSE_LAUNCH_BATTLE_FAIL] = serv_response_launch_battle_fail,
-    [SERVER_RESPONSE_LAUNCH_BATTLE_SUCCESS] = serv_response_launch_battle_success,
-    [SERVER_RESPONSE_NOBODY_INVITE_YOU] = serv_response_nobody_invite_you,
-    [SERVER_RESPONSE_INVITATION_SENT] = serv_response_invitation_sent,
-    [SERVER_MESSAGE_FRIEND_LOGIN] = serv_msg_friend_login,
-    [SERVER_MESSAGE_FRIEND_LOGOUT] = serv_msg_friend_logout,
-    [SERVER_MESSAGE_FRIEND_ACCEPT_BATTLE] = serv_msg_accept_battle,
-    [SERVER_MESSAGE_FRIEND_REJECT_BATTLE] = serv_msg_reject_battle,
-    [SERVER_MESSAGE_FRIEND_NOT_LOGIN] = serv_msg_friend_not_login,
-    [SERVER_MESSAGE_FRIEND_ALREADY_IN_BATTLE] = serv_msg_friend_already_in_battle,
-    [SERVER_MESSAGE_INVITE_TO_BATTLE] = serv_msg_you_are_invited,
-    [SERVER_MESSAGE_FRIEND_MESSAGE] = serv_msg_friend_msg,
-    [SERVER_MESSAGE_USER_QUIT_BATTLE] = serv_msg_friend_quit_battle,
-    [SERVER_MESSAGE_BATTLE_DISBANDED] = serv_msg_battle_disbanded,
-    [SERVER_MESSAGE_BATTLE_INFORMATION] = serv_msg_battle_info,
-    [SERVER_MESSAGE_YOU_ARE_DEAD] = serv_msg_you_are_dead,
-    [SERVER_MESSAGE_YOU_ARE_SHOOTED] = serv_msg_you_are_shooted,
-    [SERVER_MESSAGE_YOU_ARE_TRAPPED_IN_MAGMA] = serv_msg_you_are_trapped_in_magma,
-    [SERVER_MESSAGE_YOU_GOT_BLOOD_VIAL] = serv_msg_you_got_blood_vial,
-    [SERVER_MESSAGE_YOU_GOT_MAGAZINE] = server_message_you_got_magazine,
-    [SERVER_MESSAGE_YOUR_MAGAZINE_IS_EMPTY] = server_message_your_magazine_is_empty,
-    [SERVER_MESSAGE] = serv_message,
-    [SERVER_STATUS_QUIT] = serv_quit,
-    [SERVER_STATUS_FATAL] = serv_fatal,
-};
+static int (*recv_msg_func[256])(server_message_t*);
 
 void* message_monitor(void* args) {
     server_message_t sm;
@@ -1523,7 +1452,11 @@ void terminate(int signum) {
     resume_and_exit(signum);
 }
 
+void init_local_constants();
+
 int main(int argc, char* argv[]) {
+    init_constants();
+    init_local_constants();
     if (access(log_file, F_OK) == 0) {
         remove(log_file);
     }
@@ -1562,4 +1495,80 @@ int main(int argc, char* argv[]) {
 
     resume_and_exit(0);
     return 0;
+}
+
+void init_local_constants() {
+    strncpy(user_state_s[USER_STATE_NOT_LOGIN], "not login", USER_STATE_LEN);
+    strncpy(user_state_s[USER_STATE_LOGIN], "login", USER_STATE_LEN);
+    strncpy(user_state_s[USER_STATE_BATTLE], "battle", USER_STATE_LEN);
+
+    strcpy(server_message_s[SERVER_SAY_NOTHING], "SERVER_SAY_NOTHING");
+    strcpy(server_message_s[SERVER_RESPONSE_LOGIN_SUCCESS], "SERVER_RESPONSE_LOGIN_SUCCESS");
+    strcpy(server_message_s[SERVER_RESPONSE_YOU_HAVE_LOGINED], "SERVER_RESPONSE_YOU_HAVE_LOGINED");
+    strcpy(server_message_s[SERVER_RESPONSE_YOU_HAVE_NOT_LOGIN], "SERVER_RESPONSE_YOU_HAVE_NOT_LOGIN");
+    strcpy(server_message_s[SERVER_RESPONSE_LOGIN_FAIL_UNREGISTERED_USERID], "SERVER_RESPONSE_LOGIN_FAIL_UNREGISTERED_USERID");
+    strcpy(server_message_s[SERVER_RESPONSE_LOGIN_FAIL_ERROR_PASSWORD], "SERVER_RESPONSE_LOGIN_FAIL_ERROR_PASSWORD");
+    strcpy(server_message_s[SERVER_RESPONSE_LOGIN_FAIL_DUP_USERID], "SERVER_RESPONSE_LOGIN_FAIL_DUP_USERID");
+    strcpy(server_message_s[SERVER_RESPONSE_LOGIN_FAIL_SERVER_LIMITS], "SERVER_RESPONSE_LOGIN_FAIL_SERVER_LIMITS");
+    strcpy(server_message_s[SERVER_RESPONSE_ALL_USERS_INFO], "SERVER_RESPONSE_ALL_USERS_INFO");
+    strcpy(server_message_s[SERVER_RESPONSE_ALL_FRIENDS_INFO], "SERVER_RESPONSE_ALL_FRIENDS_INFO");
+    strcpy(server_message_s[SERVER_RESPONSE_LAUNCH_BATTLE_FAIL], "SERVER_RESPONSE_LAUNCH_BATTLE_FAIL");
+    strcpy(server_message_s[SERVER_RESPONSE_LAUNCH_BATTLE_SUCCESS], "SERVER_RESPONSE_LAUNCH_BATTLE_SUCCESS");
+    strcpy(server_message_s[SERVER_RESPONSE_YOURE_NOT_IN_BATTLE], "SERVER_RESPONSE_YOURE_NOT_IN_BATTLE");
+    strcpy(server_message_s[SERVER_RESPONSE_YOURE_ALREADY_IN_BATTLE], "SERVER_RESPONSE_YOURE_ALREADY_IN_BATTLE");
+    strcpy(server_message_s[SERVER_RESPONSE_NOBODY_INVITE_YOU], "SERVER_RESPONSE_NOBODY_INVITE_YOU");
+    strcpy(server_message_s[SERVER_MESSAGE_DELIM], "SERVER_MESSAGE_DELIM");
+    strcpy(server_message_s[SERVER_MESSAGE_FRIEND_LOGIN], "SERVER_MESSAGE_FRIEND_LOGIN");
+    strcpy(server_message_s[SERVER_MESSAGE_FRIEND_LOGOUT], "SERVER_MESSAGE_FRIEND_LOGOUT");
+    strcpy(server_message_s[SERVER_MESSAGE_FRIEND_ACCEPT_BATTLE], "SERVER_MESSAGE_FRIEND_ACCEPT_BATTLE");
+    strcpy(server_message_s[SERVER_MESSAGE_FRIEND_REJECT_BATTLE], "SERVER_MESSAGE_FRIEND_REJECT_BATTLE");
+    strcpy(server_message_s[SERVER_MESSAGE_FRIEND_NOT_LOGIN], "SERVER_MESSAGE_FRIEND_NOT_LOGIN");
+    strcpy(server_message_s[SERVER_MESSAGE_FRIEND_ALREADY_IN_BATTLE], "SERVER_MESSAGE_FRIEND_ALREADY_IN_BATTLE");
+    strcpy(server_message_s[SERVER_MESSAGE_INVITE_TO_BATTLE], "SERVER_MESSAGE_INVITE_TO_BATTLE");
+    strcpy(server_message_s[SERVER_MESSAGE_USER_QUIT_BATTLE], "SERVER_MESSAGE_USER_QUIT_BATTLE");
+    strcpy(server_message_s[SERVER_MESSAGE_BATTLE_DISBANDED], "SERVER_MESSAGE_BATTLE_DISBANDED");
+    strcpy(server_message_s[SERVER_MESSAGE_BATTLE_INFORMATION], "SERVER_MESSAGE_BATTLE_INFORMATION");
+    strcpy(server_message_s[SERVER_MESSAGE_YOUR_MAGAZINE_IS_EMPTY], "SERVER_MESSAGE_YOUR_MAGAZINE_IS_EMPTY");
+    strcpy(server_message_s[SERVER_MESSAGE_YOU_ARE_DEAD], "SERVER_MESSAGE_YOU_ARE_DEAD");
+    strcpy(server_message_s[SERVER_MESSAGE_YOU_ARE_SHOOTED], "SERVER_MESSAGE_YOU_ARE_SHOOTED");
+    strcpy(server_message_s[SERVER_MESSAGE_YOU_ARE_TRAPPED_IN_MAGMA], "SERVER_MESSAGE_YOU_ARE_TRAPPED_IN_MAGMA");
+    strcpy(server_message_s[SERVER_MESSAGE_YOU_GOT_BLOOD_VIAL], "SERVER_MESSAGE_YOU_GOT_BLOOD_VIAL");
+    strcpy(server_message_s[SERVER_STATUS_QUIT], "SERVER_STATUS_QUIT");
+
+    recv_msg_func[SERVER_RESPONSE_REGISTER_SUCCESS] = serv_response_register_success;
+    recv_msg_func[SERVER_RESPONSE_REGISTER_FAIL] = serv_response_register_fail;
+    recv_msg_func[SERVER_RESPONSE_YOU_HAVE_REGISTERED] = serv_response_you_have_registered;
+    recv_msg_func[SERVER_RESPONSE_LOGIN_SUCCESS] = serv_response_login_success;
+    recv_msg_func[SERVER_RESPONSE_YOU_HAVE_NOT_LOGIN] = serv_response_you_have_not_login;
+    recv_msg_func[SERVER_RESPONSE_LOGIN_FAIL_UNREGISTERED_USERID] = serv_response_login_fail_unregistered_userid;
+    recv_msg_func[SERVER_RESPONSE_LOGIN_FAIL_ERROR_PASSWORD] = serv_response_login_fail_error_password;
+    recv_msg_func[SERVER_RESPONSE_LOGIN_FAIL_DUP_USERID] = serv_response_login_fail_dup_userid;
+    recv_msg_func[SERVER_RESPONSE_LOGIN_FAIL_SERVER_LIMITS] = serv_response_login_fail_server_limits;
+    recv_msg_func[SERVER_RESPONSE_YOU_HAVE_LOGINED] = serv_response_you_have_logined;
+    recv_msg_func[SERVER_RESPONSE_ALL_USERS_INFO] = serv_response_all_users_info;
+    recv_msg_func[SERVER_RESPONSE_ALL_FRIENDS_INFO] = serv_response_all_friends_info;
+    recv_msg_func[SERVER_RESPONSE_LAUNCH_BATTLE_FAIL] = serv_response_launch_battle_fail;
+    recv_msg_func[SERVER_RESPONSE_LAUNCH_BATTLE_SUCCESS] = serv_response_launch_battle_success;
+    recv_msg_func[SERVER_RESPONSE_NOBODY_INVITE_YOU] = serv_response_nobody_invite_you;
+    recv_msg_func[SERVER_RESPONSE_INVITATION_SENT] = serv_response_invitation_sent;
+    recv_msg_func[SERVER_MESSAGE_FRIEND_LOGIN] = serv_msg_friend_login;
+    recv_msg_func[SERVER_MESSAGE_FRIEND_LOGOUT] = serv_msg_friend_logout;
+    recv_msg_func[SERVER_MESSAGE_FRIEND_ACCEPT_BATTLE] = serv_msg_accept_battle;
+    recv_msg_func[SERVER_MESSAGE_FRIEND_REJECT_BATTLE] = serv_msg_reject_battle;
+    recv_msg_func[SERVER_MESSAGE_FRIEND_NOT_LOGIN] = serv_msg_friend_not_login;
+    recv_msg_func[SERVER_MESSAGE_FRIEND_ALREADY_IN_BATTLE] = serv_msg_friend_already_in_battle;
+    recv_msg_func[SERVER_MESSAGE_INVITE_TO_BATTLE] = serv_msg_you_are_invited;
+    recv_msg_func[SERVER_MESSAGE_FRIEND_MESSAGE] = serv_msg_friend_msg;
+    recv_msg_func[SERVER_MESSAGE_USER_QUIT_BATTLE] = serv_msg_friend_quit_battle;
+    recv_msg_func[SERVER_MESSAGE_BATTLE_DISBANDED] = serv_msg_battle_disbanded;
+    recv_msg_func[SERVER_MESSAGE_BATTLE_INFORMATION] = serv_msg_battle_info;
+    recv_msg_func[SERVER_MESSAGE_YOU_ARE_DEAD] = serv_msg_you_are_dead;
+    recv_msg_func[SERVER_MESSAGE_YOU_ARE_SHOOTED] = serv_msg_you_are_shooted;
+    recv_msg_func[SERVER_MESSAGE_YOU_ARE_TRAPPED_IN_MAGMA] = serv_msg_you_are_trapped_in_magma;
+    recv_msg_func[SERVER_MESSAGE_YOU_GOT_BLOOD_VIAL] = serv_msg_you_got_blood_vial;
+    recv_msg_func[SERVER_MESSAGE_YOU_GOT_MAGAZINE] = server_message_you_got_magazine;
+    recv_msg_func[SERVER_MESSAGE_YOUR_MAGAZINE_IS_EMPTY] = server_message_your_magazine_is_empty;
+    recv_msg_func[SERVER_MESSAGE] = serv_message;
+    recv_msg_func[SERVER_STATUS_QUIT] = serv_quit;
+    recv_msg_func[SERVER_STATUS_FATAL] = serv_fatal;
 }

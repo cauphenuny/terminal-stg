@@ -3,19 +3,15 @@
 
 #define VERSION "v1.7.0"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <string.h>
-#include <assert.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstdint>
+#include <cstring>
+#include <cassert>
 #include <sys/types.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
 #include <termios.h>
-
-#ifndef bool
-#define bool _Bool
-#endif
 
 #ifndef false
 #define false 0
@@ -324,35 +320,36 @@ typedef struct server_message_t {
 } server_message_t;
 
 
-static char* signal_name_s[] = {
-    [SIGHUP   ] =  "SIGHUP",
-    [SIGINT   ] =  "SIGINT",
-    [SIGQUIT  ] =  "SIGQUIT",
-    [SIGILL   ] =  "SIGILL" ,
-    [SIGABRT  ] =  "SIGABRT",
-    [SIGFPE   ] =  "SIGFPE" ,
-    [SIGKILL  ] =  "SIGKILL",
-    [SIGSEGV  ] =  "SIGSEGV",
-    [SIGPIPE  ] =  "SIGPIPE",
-    [SIGALRM  ] =  "SIGALRM",
-    [SIGTERM  ] =  "SIGTERM",
-    [SIGUSR1  ] =  "SIGUSR1",
-    [SIGUSR2  ] =  "SIGUSR2",
-    [SIGCHLD  ] =  "SIGCHLD",
-    [SIGCONT  ] =  "SIGCONT",
-    [SIGSTOP  ] =  "SIGSTOP",
-    [SIGTSTP  ] =  "SIGTSTP",
-    [SIGTTIN  ] =  "SIGTTIN",
-    [SIGTTOU  ] =  "SIGTTOU",
-    [SIGBUS   ] =  "SIGBUS" ,
-    [SIGPOLL  ] =  "SIGPOLL",
-    [SIGPROF  ] =  "SIGPROF",
-    [SIGSYS   ] =  "SIGSYS" ,
-    [SIGTRAP  ] =  "SIGTRAP",
-    [SIGURG   ] =  "SIGURG" ,
-    [SIGVTALRM] =  "SIGVTALRM",
-    [SIGXCPU  ] =  "SIGXCPU",
-    [SIGXFSZ  ] =  "SIGXFSZ",
+char signal_name_s[128][10];
+void init_constants() {
+    strcpy(signal_name_s[SIGHUP   ], (char*)"SIGHUP");
+    strcpy(signal_name_s[SIGINT   ], (char*)"SIGINT");
+    strcpy(signal_name_s[SIGQUIT  ], (char*)"SIGQUIT");
+    strcpy(signal_name_s[SIGILL   ], (char*)"SIGILL" );
+    strcpy(signal_name_s[SIGABRT  ], (char*)"SIGABRT");
+    strcpy(signal_name_s[SIGFPE   ], (char*)"SIGFPE" );
+    strcpy(signal_name_s[SIGKILL  ], (char*)"SIGKILL");
+    strcpy(signal_name_s[SIGSEGV  ], (char*)"SIGSEGV");
+    strcpy(signal_name_s[SIGPIPE  ], (char*)"SIGPIPE");
+    strcpy(signal_name_s[SIGALRM  ], (char*)"SIGALRM");
+    strcpy(signal_name_s[SIGTERM  ], (char*)"SIGTERM");
+    strcpy(signal_name_s[SIGUSR1  ], (char*)"SIGUSR1");
+    strcpy(signal_name_s[SIGUSR2  ], (char*)"SIGUSR2");
+    strcpy(signal_name_s[SIGCHLD  ], (char*)"SIGCHLD");
+    strcpy(signal_name_s[SIGCONT  ], (char*)"SIGCONT");
+    strcpy(signal_name_s[SIGSTOP  ], (char*)"SIGSTOP");
+    strcpy(signal_name_s[SIGTSTP  ], (char*)"SIGTSTP");
+    strcpy(signal_name_s[SIGTTIN  ], (char*)"SIGTTIN");
+    strcpy(signal_name_s[SIGTTOU  ], (char*)"SIGTTOU");
+    strcpy(signal_name_s[SIGBUS   ], (char*)"SIGBUS" );
+    strcpy(signal_name_s[SIGPOLL  ], (char*)"SIGPOLL");
+    strcpy(signal_name_s[SIGPROF  ], (char*)"SIGPROF");
+    strcpy(signal_name_s[SIGSYS   ], (char*)"SIGSYS" );
+    strcpy(signal_name_s[SIGTRAP  ], (char*)"SIGTRAP");
+    strcpy(signal_name_s[SIGURG   ], (char*)"SIGURG" );
+    strcpy(signal_name_s[SIGVTALRM], (char*)"SIGVTALRM");
+    strcpy(signal_name_s[SIGXCPU  ], (char*)"SIGXCPU");
+    strcpy(signal_name_s[SIGXFSZ  ], (char*)"SIGXFSZ");
 };
 
 #define BLACK                "\e[0;30m"
