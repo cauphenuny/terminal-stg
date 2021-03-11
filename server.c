@@ -437,47 +437,55 @@ void check_user_status(int uid) {
             continue;
 
         if (ix == ux && iy == uy) {
-            if (battles[bid].items[i].kind == ITEM_MAGAZINE) {
-                battles[bid].users[uid].nr_bullets += BULLETS_PER_MAGAZINE;
-                log("user #%d %s@[%s] is got magazine\n", uid, sessions[uid].user_name, sessions[uid].ip_addr);
-                if (battles[bid].users[uid].nr_bullets > MAX_BULLETS) {
-                    log("user #%d %s@[%s] 's bullets exceeds max value\n", uid, sessions[uid].user_name, sessions[uid].ip_addr);
-                    battles[bid].users[uid].nr_bullets = MAX_BULLETS;
-                }
-                send_to_client(uid, SERVER_MESSAGE_YOU_GOT_MAGAZINE);
-                battles[bid].items[i].kind = ITEM_BLANK;
-                battles[bid].items[i].times = 0;
-            }
-            if (battles[bid].items[i].kind == ITEM_MAGMA) {
-                battles[bid].users[uid].life--;
-                battles[bid].items[i].count--;
-                log("user #%d %s@[%s] is trapped in magma\n", uid, sessions[uid].user_name, sessions[uid].ip_addr);
-                send_to_client(uid, SERVER_MESSAGE_YOU_ARE_TRAPPED_IN_MAGMA);
-                if (battles[bid].items[i].count <= 0) {
-                    log("magma %d is exhausted\n", i);
+            switch (battles[bid].items[i].kind) {
+                case ITEM_MAGAZINE: {
+                    battles[bid].users[uid].nr_bullets += BULLETS_PER_MAGAZINE;
+                    log("user #%d %s@[%s] is got magazine\n", uid, sessions[uid].user_name, sessions[uid].ip_addr);
+                    if (battles[bid].users[uid].nr_bullets > MAX_BULLETS) {
+                        log("user #%d %s@[%s] 's bullets exceeds max value\n", uid, sessions[uid].user_name, sessions[uid].ip_addr);
+                        battles[bid].users[uid].nr_bullets = MAX_BULLETS;
+                    }
+                    send_to_client(uid, SERVER_MESSAGE_YOU_GOT_MAGAZINE);
                     battles[bid].items[i].kind = ITEM_BLANK;
+                    battles[bid].items[i].times = 0;
+                    break;
+                }
+                case ITEM_MAGMA: {
+                    battles[bid].users[uid].life--;
+                    battles[bid].items[i].count--;
+                    log("user #%d %s@[%s] is trapped in magma\n", uid, sessions[uid].user_name, sessions[uid].ip_addr);
+                    send_to_client(uid, SERVER_MESSAGE_YOU_ARE_TRAPPED_IN_MAGMA);
+                    if (battles[bid].items[i].count <= 0) {
+                        log("magma %d is exhausted\n", i);
+                        battles[bid].items[i].kind = ITEM_BLANK;
+                        //battles[bid].num_of_other--;
+                    }
+                    break;
+                }
+                case ITEM_BLOOD_VIAL: {
+                    battles[bid].users[uid].life += LIFE_PER_VIAL;
+                    log("user #%d %s@[%s] got blood vial\n", uid, sessions[uid].user_name, sessions[uid].ip_addr);
+                    if (battles[bid].users[uid].life > MAX_LIFE) {
+                        log("user #%d %s@[%s] life exceeds max value\n", uid, sessions[uid].user_name, sessions[uid].ip_addr);
+                        battles[bid].users[uid].life = MAX_LIFE;
+                    }
+                    battles[bid].items[i].kind = ITEM_BLANK;
+                    battles[bid].items[i].times = 0;
                     //battles[bid].num_of_other--;
+                    send_to_client(uid, SERVER_MESSAGE_YOU_GOT_BLOOD_VIAL);
+                    break;
                 }
-            }
-            if (battles[bid].items[i].kind == ITEM_BLOOD_VIAL) {
-                battles[bid].users[uid].life += LIFE_PER_VIAL;
-                log("user #%d %s@[%s] got blood vial\n", uid, sessions[uid].user_name, sessions[uid].ip_addr);
-                if (battles[bid].users[uid].life > MAX_LIFE) {
-                    log("user #%d %s@[%s] life exceeds max value\n", uid, sessions[uid].user_name, sessions[uid].ip_addr);
-                    battles[bid].users[uid].life = MAX_LIFE;
+                case ITEM_BULLET: {
+                    if (battles[bid].items[i].owner != uid) {
+                        battles[bid].users[uid].life = max(battles[bid].users[uid].life - 1, 0);
+                        log("user #%d %s@[%s] is shooted\n", uid, sessions[uid].user_name, sessions[uid].ip_addr);
+                        send_to_client(uid, SERVER_MESSAGE_YOU_ARE_SHOOTED);
+                        battles[bid].items[i].kind = ITEM_BLANK;
+                        battles[bid].items[i].times = 0;
+                        break;
+                    }
+                    break;
                 }
-                battles[bid].items[i].kind = ITEM_BLANK;
-                battles[bid].items[i].times = 0;
-                //battles[bid].num_of_other--;
-                send_to_client(uid, SERVER_MESSAGE_YOU_GOT_BLOOD_VIAL);
-            }
-            if (battles[bid].items[i].owner != uid) {
-                battles[bid].users[uid].life--;
-                log("user #%d %s@[%s] is shooted\n", uid, sessions[uid].user_name, sessions[uid].ip_addr);
-                send_to_client(uid, SERVER_MESSAGE_YOU_ARE_SHOOTED);
-                battles[bid].items[i].kind = ITEM_BLANK;
-                battles[bid].items[i].times = 0;
-                break;
             }
             break;
         }
