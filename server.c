@@ -471,6 +471,14 @@ void check_user_status(int uid) {
                 //battles[bid].num_of_other--;
                 send_to_client(uid, SERVER_MESSAGE_YOU_GOT_BLOOD_VIAL);
             }
+            if (battles[bid].items[i].owner != uid) {
+                battles[bid].users[uid].life--;
+                log("user #%d %s@[%s] is shooted\n", uid, sessions[uid].user_name, sessions[uid].ip_addr);
+                send_to_client(uid, SERVER_MESSAGE_YOU_ARE_SHOOTED);
+                battles[bid].items[i].kind = ITEM_BLANK;
+                battles[bid].items[i].times = 0;
+                break;
+            }
             break;
         }
     }

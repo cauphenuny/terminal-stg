@@ -1,7 +1,7 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#define VERSION "v2.0.0 <beta6>"
+#define VERSION "v2.0.0 <beta6.1>"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -140,7 +140,7 @@
 
 #define INIT_BULLETS 12
 #define MAX_BULLETS 48
-#define BULLETS_PER_MAGAZINE 5
+#define BULLETS_PER_MAGAZINE 12
 
 #define INIT_LIFE 10
 #define MAX_LIFE 20
