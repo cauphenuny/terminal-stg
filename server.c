@@ -47,7 +47,7 @@ struct session_t {
     char user_name[USERNAME_SIZE];
     char ip_addr[IPADDR_SIZE];
     int conn;
-    int state;  // not login, login, battle
+    int state;
     int is_admin;
     uint32_t bid;
     uint32_t inviter_id;

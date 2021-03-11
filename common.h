@@ -24,7 +24,6 @@
 #ifndef true
 #define true 1
 #endif
-
 /* some special characters(terminal graph):
  *
  *  ▁ ▂ ▃ ▄ ▅ ▆ ▇ █ ▊ ▌ ▎ ▖ ▗ ▘ ▙ ▚ ▛ ▜ ▝ ▞ ▟ ━ ┃
