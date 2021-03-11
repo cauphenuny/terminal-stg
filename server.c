@@ -332,11 +332,13 @@ void forced_generate_items(int bid, int x, int y, int kind, int count) {
 
 void random_generate_items(int bid) {
     int random_kind, item_id;
-    if (!probability(1, 100)) return;
-    if (battles[bid].num_of_other >= MAX_OTHER) return;
+    if (!probability(1, 50)) return;
+    //if (battles[bid].num_of_other >= MAX_OTHER) return;
     item_id = get_unused_item(bid);
     if (item_id == -1) return;
     random_kind = rand() % (ITEM_END - 1) + 1;
+    if (random_kind == ITEM_BLOOD_VIAL && probability(1, 2))
+        random_kind = ITEM_MAGAZINE;
     battles[bid].item_count++;
     battles[bid].items[item_id].kind = random_kind;
     battles[bid].items[item_id].pos.x = (rand() & 0x7FFF) % BATTLE_W;

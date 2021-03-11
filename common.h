@@ -126,10 +126,10 @@
 #define SCR_W 79
 #define SCR_H 23
 
-#define BATTLE_W (SCR_W)
+//#define BATTLE_W (SCR_W)
+//#define BATTLE_H (SCR_H - 2)
+#define BATTLE_W 60
 #define BATTLE_H (SCR_H - 2)
-//#define BATTLE_W 40
-//#define BATTLE_H 12
 
 #define IPADDR_SIZE 24
 #define USERNAME_SIZE  12
@@ -142,7 +142,7 @@
 #define MAX_BULLETS 48
 #define BULLETS_PER_MAGAZINE 5
 
-#define INIT_LIFE 5
+#define INIT_LIFE 10
 #define MAX_LIFE 20
 #define LIFE_PER_VIAL 5
 
