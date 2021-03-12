@@ -292,7 +292,7 @@ int find_uid_by_user_name(const char* user_name) {
 int get_unalloced_battle() {
     int ret_bid = -1;
     pthread_mutex_lock(&battles_lock);
-    for (int i = 0; i < USER_CNT; i++) {
+    for (int i = 1; i < USER_CNT; i++) {
         if (battles[i].is_alloced == false) {
             battles[i].reset();
             battles[i].is_alloced = true;
@@ -1019,6 +1019,56 @@ int client_command_send_message(int uid) {
     return 0;
 }
 
+int client_command_create_ffa(int uid) {
+    if (sessions[uid].state == USER_STATE_BATTLE) {
+        log("user %s who tries to launch battle has been in battle\n", sessions[uid].user_name);
+        send_to_client(uid, SERVER_RESPONSE_YOURE_ALREADY_IN_BATTLE);
+        return 0;
+    } else {
+        log("user %s tries to create ffa sessions #0\n", sessions[uid].user_name);
+    }
+
+    int bid = 0;
+    client_message_t* pcm = &sessions[uid].cm;
+
+    log("%s launch battle with %s\n", sessions[uid].user_name, pcm->user_name);
+
+    if (battles[bid].is_alloced) {
+        loge("fail to create battle for %s and %s\n", sessions[uid].user_name, pcm->user_name);
+        send_to_client(uid, SERVER_RESPONSE_LAUNCH_BATTLE_FAIL);
+        return 0;
+    } else {
+        logi("launch battle #0 for ffa\n");
+        battles[bid].is_alloced = true;
+        user_join_battle(bid, uid);
+        invite_friend_to_battle(bid, uid, pcm->user_name);
+        launch_battle(bid);
+        send_to_client(uid, SERVER_RESPONSE_LAUNCH_BATTLE_SUCCESS);
+    }
+
+    return 0;
+}
+
+int client_command_launch_ffa(int uid) {
+    log("user %s@[%s] try ffa\n", sessions[uid].user_name, sessions[uid].ip_addr);
+
+    if (sessions[uid].state == USER_STATE_BATTLE) {
+        logi("already in battle\n");
+        send_to_client(uid, SERVER_RESPONSE_YOURE_ALREADY_IN_BATTLE);
+    } else {
+        int bid = 0;
+
+        if (battles[bid].is_alloced) {
+            user_join_battle(bid, uid);
+            logi("accept success\n");
+        } else {
+            logi("user %s@[%s] created ffa session #0\n", sessions[uid].user_name, sessions[uid].ip_addr);
+            client_command_create_ffa(uid);
+        }
+    }
+    return 0;
+}
+
 int client_command_accept_battle(int uid) {
     log("user %s@[%s] accept battle #%d\n", sessions[uid].user_name, sessions[uid].ip_addr, sessions[uid].bid);
 
@@ -1301,6 +1351,7 @@ void init_handler() {
     handler[CLIENT_COMMAND_LAUNCH_BATTLE] = client_command_launch_battle,
     handler[CLIENT_COMMAND_QUIT_BATTLE] = client_command_quit_battle,
     handler[CLIENT_COMMAND_ACCEPT_BATTLE] = client_command_accept_battle,
+    handler[CLIENT_COMMAND_LAUNCH_FFA] = client_command_launch_ffa,
     handler[CLIENT_COMMAND_REJECT_BATTLE] = client_command_reject_battle,
     handler[CLIENT_COMMAND_INVITE_USER] = client_command_invite_user,
 
