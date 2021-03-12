@@ -769,13 +769,16 @@ void flip_screen() {
     lock_cursor();
     set_cursor(0, SCR_H);
     printf("\033[2J");
+    set_cursor(0, 0);
     unlock_cursor();
 }
 
 void clear_screen() {
+    lock_cursor();
     set_cursor(0, SCR_H);
     printf("\033[2J");
     set_cursor(0, 0);
+    unlock_cursor();
 }
 
 void draw_button(uint32_t button_id) {
@@ -1069,7 +1072,7 @@ void start_ui() {
 
 int serv_quit(server_message_t* psm) {
     wlog("call message handler %s\n", __func__);
-    clear_screen();
+    flip_screen();
     puts("forced terminated by server.\033[?25h" NONE);
     resume_and_exit(1);
     return 0;
@@ -1077,7 +1080,7 @@ int serv_quit(server_message_t* psm) {
 
 int serv_fatal(server_message_t* psm) {
     wlog("call message handler %s\n", __func__);
-    clear_screen();
+    flip_screen();
     puts("forced terminated by a user.\033[?25h" NONE);
     resume_and_exit(3);
     return 0;
@@ -1385,7 +1388,8 @@ void draw_players(server_message_t* psm) {
             set_cursor(BATTLE_W, ++p);
             printf("%s%s%s(%d)", color_s[psm->user_namecolor[i]], psm->user_name[i], color_s[0], psm->user_life[i]);
             set_cursor(BATTLE_W + 10, p);
-            printf("50★  1.0");
+            printf("50★  %.1lf",
+                (double)psm->user_kill[i] / psm->user_death[i]);
         }
     }
     fflush(stdout);
@@ -1522,8 +1526,9 @@ void start_message_monitor() {
 }
 
 void terminate(int signum) {
-    clear_screen();
     set_cursor(0, 0);
+    if (signum == SIGINT) clear_screen();
+    else                  flip_screen();
     printf("received signal %s, terminate.\033[?25h\n", signal_name_s[signum]);
     resume_and_exit(signum);
 }

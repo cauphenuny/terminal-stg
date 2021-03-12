@@ -69,6 +69,9 @@ struct battle_t {
         int nr_bullets;
         int dir;
         int life;
+        int kill;
+        int death;
+        int killby;
         pos_t pos;
         pos_t last_pos;
     } users[USER_CNT];
@@ -193,6 +196,8 @@ void user_join_battle_common_part(uint32_t bid, uint32_t uid, uint32_t joined_st
     }
 
     battles[bid].users[uid].life = INIT_LIFE;
+    battles[bid].users[uid].kill = 0;
+    battles[bid].users[uid].death = 1;
     battles[bid].users[uid].nr_bullets = INIT_BULLETS;
 
     sessions[uid].state = joined_state;
@@ -456,7 +461,8 @@ void check_user_status(int uid) {
                     break;
                 }
                 case ITEM_MAGMA: {
-                    battles[bid].users[uid].life--;
+                    battles[bid].users[uid].life = max(battles[bid].users[uid].life - 1, 0);
+                    battles[bid].users[uid].killby = -1;
                     battles[bid].items[i].count--;
                     log("user #%d %s@[%s] is trapped in magma\n", uid, sessions[uid].user_name, sessions[uid].ip_addr);
                     send_to_client(uid, SERVER_MESSAGE_YOU_ARE_TRAPPED_IN_MAGMA);
@@ -485,6 +491,7 @@ void check_user_status(int uid) {
                 case ITEM_BULLET: {
                     if (battles[bid].items[i].owner != uid) {
                         battles[bid].users[uid].life = max(battles[bid].users[uid].life - 1, 0);
+                        battles[bid].users[uid].killby = battles[bid].items[i].owner;
                         log("user #%d %s@[%s] is shooted\n", uid, sessions[uid].user_name, sessions[uid].ip_addr);
                         send_to_client(uid, SERVER_MESSAGE_YOU_ARE_SHOOTED);
                         //battles[bid].items[i].kind = ITEM_BLANK;
@@ -517,8 +524,9 @@ void check_who_is_shooted(int bid) {
 
             if (ix == ux && iy == uy
                 && battles[bid].items[i].owner != j) {
-                battles[bid].users[j].life--;
-                log("user #%d %s@[%s] is shooted\n", j, sessions[j].user_name, sessions[j].ip_addr);
+                battles[bid].users[j].life = max(battles[bid].users[j].life - 1, 0);
+                battles[bid].users[j].killby = battles[bid].items[i].owner;
+                log("user #%d %s@[%s] is shooted by #%d\n", j, sessions[j].user_name, sessions[j].ip_addr, battles[bid].users[j].killby);
                 send_to_client(j, SERVER_MESSAGE_YOU_ARE_SHOOTED);
                 //battles[bid].items[i].kind = ITEM_BLANK;
                 battles[bid].items[i].times = 0;
@@ -537,6 +545,13 @@ void check_who_is_dead(int bid) {
             battles[bid].users[i].battle_state = BATTLE_STATE_DEAD;
             log("send dead info to user #%d %s@[%s]\n", i, sessions[i].user_name, sessions[i].ip_addr);
             send_to_client(i, SERVER_MESSAGE_YOU_ARE_DEAD);
+            battles[bid].users[i].death++;
+            log("death of user #%d %s@[%s]: %d\n", i, sessions[i].user_name, sessions[i].ip_addr, battles[bid].users[i].death);
+            if (battles[bid].users[i].killby != -1) {
+                int by = battles[bid].users[i].killby;
+                battles[bid].users[by].kill++;
+                log("kill of user #%d %s@[%s]: %d\n", i, sessions[by].user_name, sessions[by].ip_addr, battles[bid].users[by].kill);
+            }
         } else if (battles[bid].users[i].battle_state == BATTLE_STATE_DEAD) {
             battles[bid].users[i].battle_state = BATTLE_STATE_WITNESS;
             battles[bid].users[i].nr_bullets = 0;
@@ -608,6 +623,8 @@ void inform_all_user_battle_player(int bid) {
             strncpy(sm.user_name[i], sessions[i].user_name, USERNAME_SIZE - 1);
             sm.user_namecolor[i] = i % color_s_size + 1;
             sm.user_life[i] = battles[bid].users[i].life;
+            sm.user_death[i] = battles[bid].users[i].death;
+            sm.user_kill[i] = battles[bid].users[i].kill;
         } else {
             strcpy(sm.user_name[i], (char*)"");
             sm.user_namecolor[i] = 0;
@@ -616,7 +633,7 @@ void inform_all_user_battle_player(int bid) {
     for (int i = 0; i < USER_CNT; i++) {
         if (battles[bid].users[i].battle_state != BATTLE_STATE_UNJOINED) {
             wrap_send(sessions[i].conn, &sm);
-            log("inform user #%d %s@[%s]\n", i, sessions[i].user_name, sessions[i].ip_addr);
+            //log("inform user #%d %s@[%s]\n", i, sessions[i].user_name, sessions[i].ip_addr);
         }
     }
 }

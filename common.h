@@ -1,7 +1,7 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#define VERSION "v2.1.1"
+#define VERSION "v2.2.0"
 
 #include <cstdio>
 #include <cstdlib>
@@ -332,6 +332,8 @@ typedef struct server_message_t {
         struct {
             char user_name[USER_CNT][USERNAME_SIZE];
             uint8_t user_namecolor[USER_CNT];
+            uint8_t user_kill[USER_CNT];
+            uint8_t user_death[USER_CNT];
             uint16_t user_life[USER_CNT];
         };
 
@@ -419,8 +421,8 @@ void init_constants() {
     signal_name_s[SIGXCPU  ] = (char*)"SIGXCPU";
     signal_name_s[SIGXFSZ  ] = (char*)"SIGXFSZ";
     color_s[0] = (char*)NONE;
-    color_s[1] = (char*)L_RED;
-    color_s[2] = (char*)L_GREEN;
+    color_s[1] = (char*)L_GREEN;
+    color_s[2] = (char*)L_RED;
     color_s[3] = (char*)YELLOW;
     color_s[4] = (char*)L_BLUE;
     color_s[5] = (char*)L_PURPLE;
