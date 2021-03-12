@@ -8,6 +8,7 @@
 #include <csignal>
 #include <cstdarg>
 
+#include "constants.h"
 #include "common.h"
 #include "func.h"
 

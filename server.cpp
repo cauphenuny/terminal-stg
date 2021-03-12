@@ -14,6 +14,7 @@
 #include <vector>
 #include <list>
 
+#include "constants.h"
 #include "common.h"
 #include "func.h"
 
@@ -452,15 +453,14 @@ void check_user_status(int uid) {
     int uy = battles[bid].users[uid].pos.y;
     //for (int i = 0; i < MAX_ITEM; i++) {
     auto& items = battles[bid].items;
-    bool if_erased = 0;
-    for (auto it = items.begin(); it != items.end();) {
+    for (auto it = items.begin(), next = it; it != items.end(); it = next) {
 
+        next = std::next(it);
         int ix = it->pos.x;
         int iy = it->pos.y;
-        bool is_erased = 0;
+        //bool is_erased = 0;
 
         if (battles[bid].users[uid].battle_state != BATTLE_STATE_LIVE) {
-            it++;
             continue;
         }
 
@@ -474,7 +474,8 @@ void check_user_status(int uid) {
                         battles[bid].users[uid].nr_bullets = MAX_BULLETS;
                     }
                     send_to_client(uid, SERVER_MESSAGE_YOU_GOT_MAGAZINE);
-                    it = items.erase(it), is_erased = 1, if_erased = 1;
+                    next = items.erase(it);
+                    log("current item size: %ld\n", items.size());
                     break;
                 }
                 case ITEM_MAGMA: {
@@ -486,7 +487,8 @@ void check_user_status(int uid) {
                     if (it->count <= 0) {
                         log("magma %d is exhausted\n", it->id);
                         battles[bid].num_of_other--;
-                        it = items.erase(it), is_erased = 1, if_erased = 1;
+                        next = items.erase(it);
+                        log("current item size: %ld\n", items.size());
                     }
                     break;
                 }
@@ -499,7 +501,8 @@ void check_user_status(int uid) {
                     }
                     battles[bid].num_of_other--;
                     send_to_client(uid, SERVER_MESSAGE_YOU_GOT_BLOOD_VIAL);
-                    it = items.erase(it), is_erased = 1, if_erased = 1;
+                    next = items.erase(it);
+                    log("current item size: %ld\n", items.size());
                     break;
                 }
                 case ITEM_BULLET: {
@@ -508,16 +511,15 @@ void check_user_status(int uid) {
                         battles[bid].users[uid].killby = it->owner;
                         log("user #%d %s@[%s] is shooted\n", uid, sessions[uid].user_name, sessions[uid].ip_addr);
                         send_to_client(uid, SERVER_MESSAGE_YOU_ARE_SHOOTED);
-                        it = items.erase(it), is_erased = 1, if_erased = 1;
+                        next = items.erase(it);
+                        log("current item size: %ld\n", items.size());
                         break;
                     }
                     break;
                 }
             }
         }
-        if (!is_erased) it++;
     }
-    if (if_erased) log("current item size: %ld\n", items.size());
     //auto end_time = myclock();
     //log("completed.\n");
 }
@@ -526,15 +528,14 @@ void check_who_is_shooted(int bid) {
     //for (int i = 0; i < MAX_ITEM; i++) {
     //log("checking...\n");
     auto& items = battles[bid].items;
-    for (auto cur = items.begin(); cur != items.end();) {
+    for (auto cur = items.begin(), next = cur; cur != items.end(); cur = next) {
+        next = std::next(cur);
         if (cur->kind != ITEM_BULLET) {
-            cur++;
             continue;
         }
 
         int ix = cur->pos.x;
         int iy = cur->pos.y;
-        int is_erased = 0;
 
         for (int j = 0; j < USER_CNT; j++) {
             if (battles[bid].users[j].battle_state != BATTLE_STATE_LIVE)
@@ -549,11 +550,10 @@ void check_who_is_shooted(int bid) {
                     j, sessions[j].user_name, sessions[j].ip_addr, 
                     cur->owner, sessions[cur->owner].user_name);
                 send_to_client(j, SERVER_MESSAGE_YOU_ARE_SHOOTED);
-                cur = items.erase(cur), is_erased = 1;
+                next = items.erase(cur);
                 break;
             }
         }
-        if (!is_erased) cur++;
     }
     //log("completed.\n");
 }

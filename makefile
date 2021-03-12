@@ -2,10 +2,10 @@
 
 all:server client
 
-server:server.cpp common.h func.h
+server:server.cpp common.h func.h constants.h
 	g++ -Wall -std=c++11 server.cpp -o server -lpthread -ggdb
 
-client:client.cpp common.h func.h
+client:client.cpp common.h func.h constants.h
 	g++ -Wall -std=c++11 client.cpp -o client -lpthread -ggdb
 
 clean:
