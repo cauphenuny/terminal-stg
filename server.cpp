@@ -175,7 +175,6 @@ void user_quit_battle(uint32_t bid, uint32_t uid) {
                 wrap_send(sessions[i].conn, &sm);
             }
         }
-        inform_all_user_battle_player(bid);
     }
 }
 
@@ -198,7 +197,6 @@ void user_join_battle_common_part(uint32_t bid, uint32_t uid, uint32_t joined_st
 
     sessions[uid].state = joined_state;
     sessions[uid].bid = bid;
-    inform_all_user_battle_player(bid);
 }
 
 void user_join_battle(uint32_t bid, uint32_t uid) {
@@ -214,7 +212,6 @@ void user_join_battle(uint32_t bid, uint32_t uid) {
     if (battles[bid].users[uid].battle_state == BATTLE_STATE_UNJOINED) {
         user_join_battle_common_part(bid, uid, USER_STATE_BATTLE);
     }
-    inform_all_user_battle_player(bid);
 }
 
 void user_invited_to_join_battle(uint32_t bid, uint32_t uid) {
@@ -540,7 +537,6 @@ void check_who_is_dead(int bid) {
             battles[bid].users[i].battle_state = BATTLE_STATE_DEAD;
             log("send dead info to user #%d %s@[%s]\n", i, sessions[i].user_name, sessions[i].ip_addr);
             send_to_client(i, SERVER_MESSAGE_YOU_ARE_DEAD);
-            inform_all_user_battle_player(bid);
         } else if (battles[bid].users[i].battle_state == BATTLE_STATE_DEAD) {
             battles[bid].users[i].battle_state = BATTLE_STATE_WITNESS;
             battles[bid].users[i].nr_bullets = 0;
@@ -611,6 +607,7 @@ void inform_all_user_battle_player(int bid) {
             battles[bid].users[i].life > 0) {
             strncpy(sm.user_name[i], sessions[i].user_name, USERNAME_SIZE - 1);
             sm.user_namecolor[i] = i % color_s_size + 1;
+            sm.user_life[i] = battles[bid].users[i].life;
         } else {
             strcpy(sm.user_name[i], (char*)"");
             sm.user_namecolor[i] = 0;
@@ -668,6 +665,7 @@ void* battle_ruler(void* args) {
         check_who_is_shooted(bid);
         check_who_is_dead(bid);
         inform_all_user_battle_state(bid);
+        inform_all_user_battle_player(bid);
         check_item_count(bid);
         random_generate_items(bid);
         usleep(GLOBAL_SPEED);

@@ -773,6 +773,7 @@ void flip_screen() {
 }
 
 void clear_screen() {
+    set_cursor(0, SCR_H);
     printf("\033[2J");
     set_cursor(0, 0);
 }
@@ -1382,7 +1383,7 @@ void draw_players(server_message_t* psm) {
     for (int i = 0, p = 0; i < USER_CNT; i++) {
         if (psm->user_namecolor[i] != 0) {
             set_cursor(BATTLE_W, ++p);
-            printf("%s%s%s", color_s[psm->user_namecolor[i]], psm->user_name[i], color_s[0]);
+            printf("%s%s%s(%d)", color_s[psm->user_namecolor[i]], psm->user_name[i], color_s[0], psm->user_life[i]);
             set_cursor(BATTLE_W + 10, p);
             printf("50★  1.0");
         }
