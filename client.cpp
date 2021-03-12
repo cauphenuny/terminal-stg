@@ -9,6 +9,7 @@
 #include <cstdarg>
 
 #include "common.h"
+#include "func.h"
 
 #define LINE_MAX_LEN 40
 
@@ -1389,7 +1390,7 @@ void draw_players(server_message_t* psm) {
             printf("%s%s%s(%d)", color_s[psm->user_namecolor[i]], psm->user_name[i], color_s[0], psm->user_life[i]);
             set_cursor(BATTLE_W + 10, p);
             printf("50★  %.1lf",
-                (double)psm->user_kill[i] / psm->user_death[i]);
+                (double)psm->user_kill[i] / max(psm->user_death[i], 1));
         }
     }
     fflush(stdout);
