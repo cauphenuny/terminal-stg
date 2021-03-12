@@ -1,7 +1,7 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#define VERSION "v2.2.0"
+#define VERSION "v2.2.1"
 
 #include <cstdio>
 #include <cstdlib>
@@ -252,10 +252,10 @@ enum {
     MAP_ITEM_MAGMA,
     MAP_ITEM_GRASS,
     MAP_ITEM_BLOOD_VIAL,
-    MAP_ITEM_END,
     MAP_ITEM_MY_BULLET,
     MAP_ITEM_OTHER_BULLET,
     MAP_ITEM_USER,
+    MAP_ITEM_END,
 };
 
 enum {
@@ -381,9 +381,10 @@ void init_constants() {
     map_s[MAP_ITEM_MAGMA] = (char*)"X";
     map_s[MAP_ITEM_GRASS] = (char*)"█";
     map_s[MAP_ITEM_BLOOD_VIAL] = (char*)"*";
-    map_s[MAP_ITEM_END] = (char*)" ";
     map_s[MAP_ITEM_MY_BULLET] = (char*)".";
     map_s[MAP_ITEM_OTHER_BULLET] = (char*)".";
+    map_s[MAP_ITEM_USER] = (char*)"A";
+    map_s[MAP_ITEM_END] = (char*)" ";
 
     item_to_map[ITEM_NONE] = MAP_ITEM_NONE;
     item_to_map[ITEM_MAGAZINE] = MAP_ITEM_MAGAZINE;

@@ -628,6 +628,9 @@ void inform_all_user_battle_player(int bid) {
         } else {
             strcpy(sm.user_name[i], (char*)"");
             sm.user_namecolor[i] = 0;
+            sm.user_life[i] = 0;
+            sm.user_death[i] = 0;
+            sm.user_kill[i] = 0;
         }
     }
     for (int i = 0; i < USER_CNT; i++) {

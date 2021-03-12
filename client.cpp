@@ -1351,22 +1351,26 @@ void draw_items(server_message_t* psm) {
     for (int i = 0, cur; i < BATTLE_H; i++) {
         for (int j = 0; j < BATTLE_W; j += 2) {
             cur = (int)psm->map[i][j >> 1] & 0x0F;
-            if (map[i][j] != cur) {
-                map[i][j] = cur;
-                set_cursor(j, i);
-                if (cur == MAP_ITEM_MY_BULLET) printf("%s%s%s", color_s[psm->color], map_s[cur], color_s[0]);
-                else printf("%s", map_s[cur]);
-                if (map_s[cur] == NULL) exit(cur);
-                //putchar(' ');
+            if (cur < MAP_ITEM_END) {
+                if (map[i][j] != cur) {
+                    map[i][j] = cur;
+                    set_cursor(j, i);
+                    if (cur == MAP_ITEM_MY_BULLET) printf("%s%s%s", color_s[psm->color], map_s[cur], color_s[0]);
+                    else printf("%s", map_s[cur]);
+                    if (map_s[cur] == NULL) exit(cur);
+                    //putchar(' ');
+                }
             }
             cur = (int)(psm->map[i][j >> 1] >> 4) & 0x0F;
-            if (map[i][j + 1] != cur) {
-                map[i][j + 1] = cur;
-                set_cursor(j + 1, i);
-                if (cur == MAP_ITEM_MY_BULLET) printf("%s%s%s", color_s[psm->color], map_s[cur], color_s[0]);
-                else printf("%s", map_s[cur]);
-                if (map_s[cur] == NULL) exit(cur);
-                //putchar(' ');
+            if (cur < MAP_ITEM_END) {
+                if (map[i][j + 1] != cur) {
+                    map[i][j + 1] = cur;
+                    set_cursor(j + 1, i);
+                    if (cur == MAP_ITEM_MY_BULLET) printf("%s%s%s", color_s[psm->color], map_s[cur], color_s[0]);
+                    else printf("%s", map_s[cur]);
+                    if (map_s[cur] == NULL) exit(cur);
+                    //putchar(' ');
+                }
             }
         }
     }
