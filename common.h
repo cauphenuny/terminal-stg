@@ -1,7 +1,7 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#define VERSION "v2.2.1"
+#define VERSION "v2.3.0"
 
 #include <cstdio>
 #include <cstdlib>
@@ -97,6 +97,9 @@
 #define log(fmt, ...) \
     fprintf(stderr, "\033[" VT100_STYLE_NORMAL ";" VT100_COLOR_BLUE "m[LOG] \033[0m" "%s:%d: " fmt, __func__, __LINE__, ## __VA_ARGS__)
 
+#define logw(fmt, ...) \
+    fprintf(stderr, "\033[" VT100_STYLE_NORMAL ";" VT100_COLOR_YELLOW "m[WARN] \033[0m" "%s:%d: " fmt, __func__, __LINE__, ## __VA_ARGS__)
+
 // inner log
 #define logi(fmt, ...) \
     fprintf(stderr, "\033[" VT100_STYLE_NORMAL ";" VT100_COLOR_BLUE "m[LOG] \033[0m" "%s:%d: ==> " fmt, __func__, __LINE__, ## __VA_ARGS__)
@@ -132,12 +135,12 @@
 #define IPADDR_SIZE 24
 #define USERNAME_SIZE  12
 #define MSG_SIZE 40
-#define USER_CNT   10
+#define USER_CNT   15
 
 #define PASSWORD_SIZE USERNAME_SIZE
 
 #define INIT_BULLETS 12
-#define MAX_BULLETS 240
+#define MAX_BULLETS 480
 #define BULLETS_PER_MAGAZINE 12
 
 #define INIT_LIFE 10
@@ -149,11 +152,9 @@
 #define MAGMA_INIT_TIMES 3
 #define MAX_OTHER 30
 
-#define BULLETS_LASTS_TIME 500
+#define BULLETS_LASTS_TIME 1000
 #define OTHER_ITEM_LASTS_TIME 1000
-#define GLOBAL_SPEED 30000
-
-#define MAX_ITEM (USER_CNT * (MAX_BULLETS) + MAX_OTHER)
+#define GLOBAL_SPEED 30
 
 enum {
     CLIENT_COMMAND_USER_QUIT,
@@ -249,11 +250,11 @@ enum {
 enum {
     MAP_ITEM_NONE,
     MAP_ITEM_MAGAZINE,
-    MAP_ITEM_MAGMA,
-    MAP_ITEM_GRASS,
     MAP_ITEM_BLOOD_VIAL,
+    MAP_ITEM_MAGMA,
     MAP_ITEM_MY_BULLET,
     MAP_ITEM_OTHER_BULLET,
+    MAP_ITEM_GRASS,
     MAP_ITEM_USER,
     MAP_ITEM_END,
 };
@@ -288,10 +289,10 @@ enum {
 #define USER_STATE_BATTLE          3
 #define USER_STATE_WAIT_TO_BATTLE  4
 
-typedef struct pos_t {
+struct pos_t {
     uint8_t x;
     uint8_t y; 
-} pos_t;
+};
 
 // format of messages sended from client to server
 typedef struct client_message_t {
@@ -428,12 +429,12 @@ void init_constants() {
     color_s[4] = (char*)L_BLUE;
     color_s[5] = (char*)L_PURPLE;
     color_s[6] = (char*)L_CYAN;
-    color_s[7] = (char*)RED;
-    color_s[8] = (char*)GREEN;
-    color_s[9] = (char*)BROWN;
-    color_s[10] = (char*)BLUE;
-    color_s[11] = (char*)PURPLE;
-    color_s[12] = (char*)CYAN;
+    color_s[7] = (char*)(RED UNDERLINE);
+    color_s[8] = (char*)(GREEN UNDERLINE);
+    color_s[9] = (char*)(BROWN UNDERLINE);
+    color_s[10] = (char*)(BLUE UNDERLINE);
+    color_s[11] = (char*)(PURPLE UNDERLINE);
+    color_s[12] = (char*)(CYAN UNDERLINE);
     color_s_size = 12;
 };
 

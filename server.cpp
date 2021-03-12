@@ -3,12 +3,16 @@
 #include <pthread.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <sys/time.h>
 #include <unistd.h>
 
 #include <csignal>
 #include <cstring>
 #include <ctime>
 #include <cmath>
+#include <set>
+#include <vector>
+#include <list>
 
 #include "common.h"
 #include "func.h"
@@ -17,9 +21,13 @@
 
 #define REGISTERED_USER_FILE "userlists.log"
 
+using std::multiset;
+using std::vector;
+
 pthread_mutex_t userlist_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t sessions_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t battles_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t default_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t items_lock[USER_CNT];
 
 int server_fd = 0, port = 50000, port_range = 100;
@@ -37,6 +45,7 @@ void check_user_status(int uid);
 void terminate_process(int recved_signal);
 
 static int user_list_size = 0;
+static uint64_t sum_delay_time = 0, prev_time;
 
 struct {
     char user_name[USERNAME_SIZE];
@@ -61,10 +70,36 @@ struct session_args_t {
 
 typedef struct session_args_t session_args_t;
 
-struct battle_t {
+class item_t { public:
+    int id;
+    int dir;
+    int owner;
+    uint64_t time;
+    int count;
+    int kind;
+    pos_t pos;
+    item_t(const item_t &it) : id(it.id),
+                               dir(it.dir), 
+                               owner(it.owner),
+                               time(it.time),
+                               count(it.count),
+                               kind(it.kind),
+                               pos(it.pos)
+                               {}
+    item_t() {
+        id = 0;
+        dir = owner = time = count = kind = 0;
+        pos.x = pos.y = 0;
+    }
+    friend const bool operator < (const item_t it1, const item_t it2) {
+        return it1.time < it2.time;
+    }
+};
+
+class battle_t { public:
     int is_alloced;
     size_t nr_users;
-    struct {
+    class user_t { public:
         int battle_state;
         int nr_bullets;
         int dir;
@@ -78,16 +113,18 @@ struct battle_t {
 
     int num_of_other;  // number of other alloced item except for bullet
     int item_count;
+    uint64_t global_time;
 
-    struct {
-        int is_used;
-        int dir;
-        int owner;
-        int times;
-        int count;
-        int kind;
-        pos_t pos;
-    } items[MAX_ITEM];
+    std::list<item_t> items;
+
+    void reset() {
+        is_alloced = nr_users = num_of_other = item_count = 0;
+        global_time = 0;
+        items.clear();
+    }
+    battle_t() {
+        reset();
+    }
 
 } battles[USER_CNT];
 
@@ -197,7 +234,7 @@ void user_join_battle_common_part(uint32_t bid, uint32_t uid, uint32_t joined_st
 
     battles[bid].users[uid].life = INIT_LIFE;
     battles[bid].users[uid].kill = 0;
-    battles[bid].users[uid].death = 1;
+    battles[bid].users[uid].death = 0;
     battles[bid].users[uid].nr_bullets = INIT_BULLETS;
 
     sessions[uid].state = joined_state;
@@ -257,7 +294,7 @@ int get_unalloced_battle() {
     pthread_mutex_lock(&battles_lock);
     for (int i = 0; i < USER_CNT; i++) {
         if (battles[i].is_alloced == false) {
-            memset(&battles[i], 0, sizeof(struct battle_t));
+            battles[i].reset();
             battles[i].is_alloced = true;
             ret_bid = i;
             break;
@@ -306,61 +343,45 @@ void inform_friends(int uid, int message) {
     }
 }
 
-int get_unused_item(int bid) {
-    int ret_item_id = -1;
-    pthread_mutex_lock(&items_lock[bid]);
-    for (int i = 0; i < MAX_ITEM; i++) {
-        if (!(battles[bid].items[i].is_used)) {
-            ret_item_id = i;
-            battles[bid].items[i].is_used = true;
-            break;
-        }
-    }
-    pthread_mutex_unlock(&items_lock[bid]);
-    return ret_item_id;
-}
-
 void forced_generate_items(int bid, int x, int y, int kind, int count) {
-    int item_id;
     //if (battles[bid].num_of_other >= MAX_OTHER) return;
-    item_id = get_unused_item(bid);
-    if (item_id == -1) return;
     battles[bid].item_count++;
-    battles[bid].items[item_id].kind = kind;
-    battles[bid].items[item_id].pos.x = x;
-    battles[bid].items[item_id].pos.y = y;
-    battles[bid].items[item_id].times = count;
-    battles[bid].items[item_id].is_used = true;
-    log("new item: #%dk%d(%d,%d)\n", item_id,
-        battles[bid].items[item_id].kind,
-        battles[bid].items[item_id].pos.x,
-        battles[bid].items[item_id].pos.y);
-    //battles[bid].num_of_other ++;
+    item_t new_item;
+    new_item.id = battles[bid].item_count;
+    new_item.kind = kind;
+    new_item.pos.x = x;
+    new_item.pos.y = y;
+    new_item.time = battles[bid].global_time + count;
+    battles[bid].items.push_back(new_item);
+    log("new item: #%dk%d(%d,%d)\n", new_item.id,
+        new_item.kind,
+        new_item.pos.x,
+        new_item.pos.y);
 }
 
 void random_generate_items(int bid) {
-    int random_kind, item_id;
+    int random_kind;
     if (!probability(1, 100)) return;
     if (battles[bid].num_of_other >= MAX_OTHER) return;
-    item_id = get_unused_item(bid);
-    if (item_id == -1) return;
     random_kind = rand() % (ITEM_END - 1) + 1;
     if (random_kind == ITEM_BLOOD_VIAL && probability(1, 2))
         random_kind = ITEM_MAGAZINE;
     battles[bid].item_count++;
-    battles[bid].items[item_id].kind = random_kind;
-    battles[bid].items[item_id].pos.x = (rand() & 0x7FFF) % BATTLE_W;
-    battles[bid].items[item_id].pos.y = (rand() & 0x7FFF) % BATTLE_H;
-    battles[bid].items[item_id].times = OTHER_ITEM_LASTS_TIME;
-    battles[bid].items[item_id].is_used = true;
-    battles[bid].num_of_other ++;
-    log("new item: #%dk%d(%d,%d)\n", item_id,
-        battles[bid].items[item_id].kind,
-        battles[bid].items[item_id].pos.x,
-        battles[bid].items[item_id].pos.y);
+    item_t new_item;
+    new_item.id = battles[bid].item_count;
+    new_item.kind = random_kind;
+    new_item.pos.x = (rand() & 0x7FFF) % BATTLE_W;
+    new_item.pos.y = (rand() & 0x7FFF) % BATTLE_H;
+    new_item.time = battles[bid].global_time + OTHER_ITEM_LASTS_TIME;
+    battles[bid].num_of_other++;
+    log("new item: #%dk%d(%d,%d)\n", new_item.id,
+        new_item.kind,
+        new_item.pos.x,
+        new_item.pos.y);
     if (random_kind == ITEM_MAGMA) {
-        battles[bid].items[item_id].count = MAGMA_INIT_TIMES;
+        new_item.count = MAGMA_INIT_TIMES;
     }
+    battles[bid].items.push_back(new_item);
     for (int i = 0; i < USER_CNT; i++) {
         if (battles[bid].users[i].battle_state != BATTLE_STATE_LIVE)
             continue;
@@ -369,84 +390,82 @@ void random_generate_items(int bid) {
 }
 
 void move_bullets(int bid) {
-    for (int i = 0; i < MAX_ITEM; i++) {
-        if (battles[bid].items[i].is_used == false
-            || battles[bid].items[i].kind != ITEM_BULLET)
+    for (auto& cur : battles[bid].items) {
+    //for (int i = 0; i < MAX_ITEM; i++) {
+        if (cur.kind != ITEM_BULLET)
             continue;
-        uint8_t* px = &(battles[bid].items[i].pos.x);
-        uint8_t* py = &(battles[bid].items[i].pos.y);
-
-        // log("try to move bullet %d with dir %d\n", i, battles[bid].items[i].dir);
-
-        switch (battles[bid].items[i].dir) {
+        // log("try to move bullet %d with dir %d\n", i, cur.dir);
+        switch (cur.dir) {
             case DIR_UP: {
-                if (*py > 0) { (*py)--; break; }
-                else { battles[bid].items[i].dir = DIR_DOWN; break;}
+                if (cur.pos.y > 0) { (cur.pos.y)--; break; }
+                else { cur.dir = DIR_DOWN; break;}
             }
             case DIR_DOWN: {
-                if (*py < BATTLE_H) { (*py)++; break; }
-                else { battles[bid].items[i].dir = DIR_UP; break;}
+                if (cur.pos.y < BATTLE_H - 1) { (cur.pos.y)++; break; }
+                else { cur.dir = DIR_UP; break;}
             }
             case DIR_LEFT: {
-                if (*px > 0) { (*px)--; break; }
-                else { battles[bid].items[i].dir = DIR_RIGHT; break;}
+                if (cur.pos.x > 0) { (cur.pos.x)--; break; }
+                else { cur.dir = DIR_RIGHT; break;}
             }
             case DIR_RIGHT: {
-                if (*px < BATTLE_W) { (*px)++; break; }
-                else {battles[bid].items[i].dir = DIR_LEFT; break;}
+                if (cur.pos.x < BATTLE_W - 1) { (cur.pos.x)++; break; }
+                else { cur.dir = DIR_LEFT; break; }
             }
             case DIR_UP_LEFT: {
-                if (*py > 0) { (*py)--; }
-                else { battles[bid].items[i].dir = DIR_DOWN_LEFT; break;}
-                if (*px > 1) { (*px) -= 2; }
-                else { battles[bid].items[i].dir = DIR_UP_RIGHT; break;}
+                if (cur.pos.y > 0) { (cur.pos.y)--; }
+                else { cur.dir = DIR_DOWN_LEFT; break; }
+                if (cur.pos.x > 1) { (cur.pos.x) -= 2; }
+                else { cur.dir = DIR_UP_RIGHT; break; }
                 break;
             }
             case DIR_UP_RIGHT: {
-                if (*py > 0) { (*py)--; }
-                else { battles[bid].items[i].dir = DIR_DOWN_RIGHT; break;}
-                if (*px < BATTLE_W - 1) { (*px) += 2; }
-                else {battles[bid].items[i].dir = DIR_UP_LEFT; break;}
+                if (cur.pos.y > 0) { (cur.pos.y)--; }
+                else { cur.dir = DIR_DOWN_RIGHT; break;}
+                if (cur.pos.x < BATTLE_W - 2) { (cur.pos.x) += 2; }
+                else { cur.dir = DIR_UP_LEFT; break; }
                 break;
             }
             case DIR_DOWN_LEFT: {
-                if (*py < BATTLE_H) { (*py)++; }
-                else { battles[bid].items[i].dir = DIR_UP_LEFT; break;}
-                if (*px > 1) { (*px) -= 2; }
-                else { battles[bid].items[i].dir = DIR_DOWN_RIGHT; break;}
+                if (cur.pos.y < BATTLE_H - 2) { (cur.pos.y)++; }
+                else { cur.dir = DIR_UP_LEFT; break; }
+                if (cur.pos.x > 1) { (cur.pos.x) -= 2; }
+                else { cur.dir = DIR_DOWN_RIGHT; break; }
                 break;
             }
             case DIR_DOWN_RIGHT: {
-                if (*py < BATTLE_H) { (*py)++; }
-                else { battles[bid].items[i].dir = DIR_UP_RIGHT; break;}
-                if (*px < BATTLE_W - 1) { (*px) += 2; }
-                else {battles[bid].items[i].dir = DIR_DOWN_LEFT; break;}
+                if (cur.pos.y < BATTLE_H - 2) { (cur.pos.y)++; }
+                else { cur.dir = DIR_UP_RIGHT; break;}
+                if (cur.pos.x < BATTLE_W - 2) { (cur.pos.x) += 2; }
+                else { cur.dir = DIR_DOWN_LEFT; break; }
                 break;
             }
         }
-        //if (*px >= BATTLE_W || *py >= BATTLE_H) {
-        //    log("free bullet #%d\n", i);
-        //    battles[bid].items[i].is_used = false;
-        //}
     }
 }
 
 void check_user_status(int uid) {
+    //log("checking...\n");
+    //auto start_time = myclock();
     int bid = sessions[uid].bid;
     int ux = battles[bid].users[uid].pos.x;
     int uy = battles[bid].users[uid].pos.y;
-    for (int i = 0; i < MAX_ITEM; i++) {
-        if (battles[bid].items[i].is_used == false)
-            continue;
+    //for (int i = 0; i < MAX_ITEM; i++) {
+    auto& items = battles[bid].items;
+    bool if_erased = 0;
+    for (auto it = items.begin(); it != items.end();) {
 
-        int ix = battles[bid].items[i].pos.x;
-        int iy = battles[bid].items[i].pos.y;
+        int ix = it->pos.x;
+        int iy = it->pos.y;
+        bool is_erased = 0;
 
-        if (battles[bid].users[uid].battle_state != BATTLE_STATE_LIVE)
+        if (battles[bid].users[uid].battle_state != BATTLE_STATE_LIVE) {
+            it++;
             continue;
+        }
 
         if (ix == ux && iy == uy) {
-            switch (battles[bid].items[i].kind) {
+            switch (it->kind) {
                 case ITEM_MAGAZINE: {
                     battles[bid].users[uid].nr_bullets += BULLETS_PER_MAGAZINE;
                     log("user #%d %s@[%s] is got magazine\n", uid, sessions[uid].user_name, sessions[uid].ip_addr);
@@ -455,22 +474,19 @@ void check_user_status(int uid) {
                         battles[bid].users[uid].nr_bullets = MAX_BULLETS;
                     }
                     send_to_client(uid, SERVER_MESSAGE_YOU_GOT_MAGAZINE);
-                    //battles[bid].items[i].kind = ITEM_BLANK;
-                    battles[bid].items[i].times = 0;
-                    battles[bid].items[i].is_used = false;
+                    it = items.erase(it), is_erased = 1, if_erased = 1;
                     break;
                 }
                 case ITEM_MAGMA: {
                     battles[bid].users[uid].life = max(battles[bid].users[uid].life - 1, 0);
                     battles[bid].users[uid].killby = -1;
-                    battles[bid].items[i].count--;
+                    it->count--;
                     log("user #%d %s@[%s] is trapped in magma\n", uid, sessions[uid].user_name, sessions[uid].ip_addr);
                     send_to_client(uid, SERVER_MESSAGE_YOU_ARE_TRAPPED_IN_MAGMA);
-                    if (battles[bid].items[i].count <= 0) {
-                        log("magma %d is exhausted\n", i);
-                        //battles[bid].items[i].kind = ITEM_BLANK;
+                    if (it->count <= 0) {
+                        log("magma %d is exhausted\n", it->id);
                         battles[bid].num_of_other--;
-                        battles[bid].items[i].is_used = false;
+                        it = items.erase(it), is_erased = 1, if_erased = 1;
                     }
                     break;
                 }
@@ -481,40 +497,44 @@ void check_user_status(int uid) {
                         log("user #%d %s@[%s] life exceeds max value\n", uid, sessions[uid].user_name, sessions[uid].ip_addr);
                         battles[bid].users[uid].life = MAX_LIFE;
                     }
-                    //battles[bid].items[i].kind = ITEM_BLANK;
-                    battles[bid].items[i].times = 0;
                     battles[bid].num_of_other--;
                     send_to_client(uid, SERVER_MESSAGE_YOU_GOT_BLOOD_VIAL);
-                    battles[bid].items[i].is_used = false;
+                    it = items.erase(it), is_erased = 1, if_erased = 1;
                     break;
                 }
                 case ITEM_BULLET: {
-                    if (battles[bid].items[i].owner != uid) {
+                    if (it->owner != uid) {
                         battles[bid].users[uid].life = max(battles[bid].users[uid].life - 1, 0);
-                        battles[bid].users[uid].killby = battles[bid].items[i].owner;
+                        battles[bid].users[uid].killby = it->owner;
                         log("user #%d %s@[%s] is shooted\n", uid, sessions[uid].user_name, sessions[uid].ip_addr);
                         send_to_client(uid, SERVER_MESSAGE_YOU_ARE_SHOOTED);
-                        //battles[bid].items[i].kind = ITEM_BLANK;
-                        battles[bid].items[i].times = 0;
-                        battles[bid].items[i].is_used = false;
+                        it = items.erase(it), is_erased = 1, if_erased = 1;
                         break;
                     }
                     break;
                 }
             }
-            break;
         }
+        if (!is_erased) it++;
     }
+    if (if_erased) log("current item size: %ld\n", items.size());
+    //auto end_time = myclock();
+    //log("completed.\n");
 }
 
 void check_who_is_shooted(int bid) {
-    for (int i = 0; i < MAX_ITEM; i++) {
-        if (battles[bid].items[i].is_used == false
-            || battles[bid].items[i].kind != ITEM_BULLET)
+    //for (int i = 0; i < MAX_ITEM; i++) {
+    //log("checking...\n");
+    auto& items = battles[bid].items;
+    for (auto cur = items.begin(); cur != items.end();) {
+        if (cur->kind != ITEM_BULLET) {
+            cur++;
             continue;
+        }
 
-        int ix = battles[bid].items[i].pos.x;
-        int iy = battles[bid].items[i].pos.y;
+        int ix = cur->pos.x;
+        int iy = cur->pos.y;
+        int is_erased = 0;
 
         for (int j = 0; j < USER_CNT; j++) {
             if (battles[bid].users[j].battle_state != BATTLE_STATE_LIVE)
@@ -522,19 +542,20 @@ void check_who_is_shooted(int bid) {
             int ux = battles[bid].users[j].pos.x;
             int uy = battles[bid].users[j].pos.y;
 
-            if (ix == ux && iy == uy
-                && battles[bid].items[i].owner != j) {
+            if (ix == ux && iy == uy && cur->owner != j) {
                 battles[bid].users[j].life = max(battles[bid].users[j].life - 1, 0);
-                battles[bid].users[j].killby = battles[bid].items[i].owner;
-                log("user #%d %s@[%s] is shooted by #%d\n", j, sessions[j].user_name, sessions[j].ip_addr, battles[bid].users[j].killby);
+                battles[bid].users[j].killby = cur->owner;
+                log("user #%d %s@[%s] is shooted by #%d %s@[%s]\n",
+                    j, sessions[j].user_name, sessions[j].ip_addr, 
+                    cur->owner, sessions[cur->owner].user_name, sessions[cur->owner].ip_addr);
                 send_to_client(j, SERVER_MESSAGE_YOU_ARE_SHOOTED);
-                //battles[bid].items[i].kind = ITEM_BLANK;
-                battles[bid].items[i].times = 0;
-                battles[bid].items[i].is_used = false;
+                cur = items.erase(cur), is_erased = 1;
                 break;
             }
         }
+        if (!is_erased) cur++;
     }
+    //log("completed.\n");
 }
 
 void check_who_is_dead(int bid) {
@@ -561,55 +582,67 @@ void check_who_is_dead(int bid) {
 
 void check_item_count(int bid) {
     //log("call func %s\n", __func__);
-    for (int i = 0; i < MAX_ITEM; i++) {
-        if (battles[bid].items[i].times) {
-            battles[bid].items[i].times--;
-            if (!battles[bid].items[i].times) {
-                if (battles[bid].items[i].kind < ITEM_END) {
-                    battles[bid].num_of_other--;
-                    battles[bid].items[i].is_used = false;
-                }
-                //battles[bid].items[i].kind = ITEM_BLANK;
+    //for (int i = 0; i < MAX_ITEM; i++) {
+    //    if (battles[bid].items[i].times) {
+    //        battles[bid].items[i].times--;
+    //        if (!battles[bid].items[i].times) {
+    //            log("free item #%d\n", i);
+    //            battles[bid].items[i].is_used = false;
+    //            if (battles[bid].items[i].kind < ITEM_END) {
+    //                battles[bid].num_of_other--;
+    //            }
+    //            //battles[bid].items[i].kind = ITEM_BLANK;
+    //        }
+    //    }
+    //}
+    //log("check completed...\n");
+    auto& items = battles[bid].items;
+    bool if_erased = 0;
+    for (auto cur = items.begin(); cur != items.end();) {
+        if (cur->time < battles[bid].global_time) {
+            if (cur->kind < ITEM_END) {
+                battles[bid].num_of_other--;
             }
+            log("free item #%d\n", cur->id);
+            cur = battles[bid].items.erase(cur), if_erased = 1;
+        } else {
+            cur++;
         }
     }
-    //log("check completed...\n");
+    if (if_erased) log("current item size: %ld\n", items.size());
 }
 
 void render_map_for_user(int uid, server_message_t* psm) {
     int bid = sessions[uid].bid;
     int map[BATTLE_H][BATTLE_W] = {0};
-    for (int i = 0, x, y; i < MAX_ITEM; i++) {
-        x = battles[bid].items[i].pos.x;
-        y = battles[bid].items[i].pos.y;
-        if (battles[bid].items[i].is_used) {
-            switch (battles[bid].items[i].kind) {
-                case ITEM_BULLET: {
-                    if (battles[bid].items[i].owner == uid) {
-                        map[y][x] = MAP_ITEM_MY_BULLET;
-                    } else {
-                        map[y][x] = MAP_ITEM_OTHER_BULLET;
-                    }
-                    break;
+    int cur, x, y;
+    //for (int i = 0, x, y; i < MAX_ITEM; i++) {
+    for (auto it : battles[bid].items) {
+        x = it.pos.x;
+        y = it.pos.y;
+        switch (it.kind) {
+            case ITEM_BULLET: {
+                if (it.owner == uid) {
+                    map[y][x] = max(map[y][x], MAP_ITEM_MY_BULLET);
+                } else {
+                    map[y][x] = max(map[y][x], MAP_ITEM_OTHER_BULLET);
                 }
-                case ITEM_NONE: {
-                    break;
-                }
-                default: {
-                    map[y][x] = item_to_map[battles[bid].items[i].kind];
-                }
+                break;
             }
-            //sm.item_kind[i] = battles[bid].items[i].kind;
-            //sm.item_pos[i].x = battles[bid].items[i].pos.x;
-            //sm.item_pos[i].y = battles[bid].items[i].pos.y;
+            default: {
+                cur = item_to_map[it.kind];
+                map[y][x] = max(map[y][x], cur);
+            }
         }
+        //sm.item_kind[i] = it.kind;
+        //sm.item_pos[i].x = it.pos.x;
+        //sm.item_pos[i].y = it.pos.y;
     }
     for (int i = 0; i < BATTLE_H; i++) {
         for (int j = 0; j < BATTLE_W; j += 2) {
             //psm->map[i][j] = map[i][j];
             //if (psm->map[i][j] != 0) log("set item #%d\n", psm->map[i][j]);
-            psm->map[i][j >> 1] =
-                (map[i][j]) | (map[i][j + 1] << 4);
+            psm->map[i][j >> 1] = (map[i][j]) | (map[i][j + 1] << 4);
         }
     }
 }
@@ -680,7 +713,10 @@ void* battle_ruler(void* args) {
                               10000);
     }
     inform_all_user_battle_player(bid);
+    uint64_t  t[2];
     while (battles[bid].is_alloced) {
+        battles[bid].global_time++;
+        t[0] = myclock();
         move_bullets(bid);
         check_who_is_shooted(bid);
         check_who_is_dead(bid);
@@ -688,7 +724,16 @@ void* battle_ruler(void* args) {
         inform_all_user_battle_player(bid);
         check_item_count(bid);
         random_generate_items(bid);
-        usleep(GLOBAL_SPEED);
+        t[1] = myclock();
+        if (t[1] - t[0] >= 10) logw("current delay %lums, size = %ld\n",
+                             t[1] - t[0], battles[bid].items.size());
+        sum_delay_time += t[1] - t[0];
+        while (myclock() < t[0] + GLOBAL_SPEED) usleep(100);
+        if (myclock() > prev_time + 10000) {
+            prev_time = myclock();
+            log("total calulating time: %lums / 10s\n", sum_delay_time);
+            sum_delay_time = 0;
+        }
     }
     return NULL;
 }
@@ -1078,11 +1123,7 @@ int client_command_move_right(int uid) {
     return 0;
 }
 int client_command_fire(int uid, int delta_x, int delta_y, int dir) {
-    log("user #%d %s@[%s] fire %d\n", uid, sessions[uid].user_name, sessions[uid].ip_addr, dir);
     int bid = sessions[uid].bid;
-    int item_id = get_unused_item(bid);
-    log("alloc item %d for bullet\n", item_id);
-    if (item_id == -1) return 0;
 
     if (battles[bid].users[uid].nr_bullets <= 0) {
         send_to_client(uid, SERVER_MESSAGE_YOUR_MAGAZINE_IS_EMPTY);
@@ -1092,15 +1133,18 @@ int client_command_fire(int uid, int delta_x, int delta_y, int dir) {
     int y = battles[bid].users[uid].pos.y + delta_y;
     if (x < 0 || x >= BATTLE_W) return 0;
     if (y < 0 || y >= BATTLE_H) return 0;
-    log("bullet, %s@(%d, %d), direct to %d\n",
-        sessions[uid].user_name, x, y, dir);
-    battles[bid].items[item_id].kind = ITEM_BULLET;
-    battles[bid].items[item_id].dir = dir;
-    battles[bid].items[item_id].owner = uid;
-    battles[bid].items[item_id].pos.x = x;
-    battles[bid].items[item_id].pos.y = y;
-    battles[bid].items[item_id].times = BULLETS_LASTS_TIME;
+    log("user #%d %s@[%s] fire %d\n", uid, sessions[uid].user_name, sessions[uid].ip_addr, dir);
+    item_t new_item;
+    new_item.id = ++battles[bid].item_count;
+    new_item.kind = ITEM_BULLET;
+    new_item.dir = dir;
+    new_item.owner = uid;
+    new_item.pos.x = x;
+    new_item.pos.y = y;
+    new_item.time = battles[bid].global_time + BULLETS_LASTS_TIME;
     battles[bid].users[uid].nr_bullets--;
+    battles[bid].items.push_back(new_item);
+    log("current item size: %ld\n", battles[bid].items.size());
     return 0;
 }
 
@@ -1369,7 +1413,11 @@ void* session_start(void* args) {
         if (pcm->command >= CLIENT_COMMAND_END)
             continue;
 
+        uint64_t t[2];
+        t[0] = myclock();
         int ret_code = handler[pcm->command](uid);
+        t[1] = myclock();
+        sum_delay_time += t[1] - t[0];
         //log("state of user %s: %d\n", sessions[uid].user_name, sessions[uid].state);
         if (ret_code < 0) {
             log("close session #%d\n", uid);
@@ -1400,7 +1448,7 @@ int server_start() {
         servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
 
         if (bind(sockfd, (struct sockaddr*)&servaddr, sizeof(servaddr)) == -1) {
-            loge("Can not bind to port %d!\n", cur_port);
+            logw("Can not bind to port %d!\n", cur_port);
         } else {
             binded = true;
             port = cur_port;
@@ -1451,6 +1499,12 @@ void terminate_entrance(int recved_signal) {
     terminate_process(recved_signal);
 }
 
+void* speed_monitor(void* args) {
+    while (1) {
+
+    }
+}
+
 int main(int argc, char* argv[]) {
     init_constants();
     init_handler();
@@ -1470,6 +1524,9 @@ int main(int argc, char* argv[]) {
     if (signal(SIGABRT, terminate_entrance) == SIG_ERR) {
         eprintf("An error occurred while setting a signal handler.\n");
     }
+    if (signal(SIGTERM, terminate_entrance) == SIG_ERR) {
+        eprintf("An error occurred while setting a signal handler.\n");
+    }
 
     for (int i = 0; i < USER_CNT; i++) {
         pthread_mutex_init(&items_lock[i], NULL);
@@ -1479,6 +1536,10 @@ int main(int argc, char* argv[]) {
 
     server_fd = server_start();
     load_user_list();
+
+    if (pthread_create(&thread, NULL, speed_monitor, NULL) != 0) {
+        loge("failed to create speed_monitor thread.");
+    }
 
     for (int i = 0; i < USER_CNT; i++)
         sessions[i].conn = -1;
