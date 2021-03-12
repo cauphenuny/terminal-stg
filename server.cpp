@@ -545,9 +545,9 @@ void check_who_is_shooted(int bid) {
             if (ix == ux && iy == uy && cur->owner != j) {
                 battles[bid].users[j].life = max(battles[bid].users[j].life - 1, 0);
                 battles[bid].users[j].killby = cur->owner;
-                log("user #%d %s@[%s] is shooted by #%d %s@[%s]\n",
+                log("user #%d %s@[%s] shooted by #%d %s\n",
                     j, sessions[j].user_name, sessions[j].ip_addr, 
-                    cur->owner, sessions[cur->owner].user_name, sessions[cur->owner].ip_addr);
+                    cur->owner, sessions[cur->owner].user_name);
                 send_to_client(j, SERVER_MESSAGE_YOU_ARE_SHOOTED);
                 cur = items.erase(cur), is_erased = 1;
                 break;
