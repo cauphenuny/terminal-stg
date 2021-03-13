@@ -388,11 +388,11 @@ void random_generate_items(int bid) {
         new_item.count = MAGMA_INIT_TIMES;
     }
     battles[bid].items.push_back(new_item);
-    for (int i = 0; i < USER_CNT; i++) {
-        if (battles[bid].users[i].battle_state != BATTLE_STATE_LIVE)
-            continue;
-        check_user_status(i);
-    }
+    //for (int i = 0; i < USER_CNT; i++) {
+    //    if (battles[bid].users[i].battle_state != BATTLE_STATE_LIVE)
+    //        continue;
+    //    check_user_status(i);
+    //}
 }
 
 void move_bullets(int bid) {
@@ -458,17 +458,15 @@ void check_user_status(int uid) {
     int uy = battles[bid].users[uid].pos.y;
     //for (int i = 0; i < MAX_ITEM; i++) {
     auto& items = battles[bid].items;
-    bool if_erased = 0;
-    for (auto it = items.begin(); it != items.end();) {
+    if (battles[bid].users[uid].battle_state != BATTLE_STATE_LIVE) {
+        return;
+    }
+    for (auto it = items.begin(), next = std::next(it); it != items.end(); it = next) {
+
+        next = std::next(it);
 
         int ix = it->pos.x;
         int iy = it->pos.y;
-        bool is_erased = 0;
-
-        if (battles[bid].users[uid].battle_state != BATTLE_STATE_LIVE) {
-            it++;
-            continue;
-        }
 
         if (ix == ux && iy == uy) {
             switch (it->kind) {
@@ -480,7 +478,8 @@ void check_user_status(int uid) {
                         battles[bid].users[uid].nr_bullets = MAX_BULLETS;
                     }
                     send_to_client(uid, SERVER_MESSAGE_YOU_GOT_MAGAZINE);
-                    it = items.erase(it), is_erased = 1, if_erased = 1;
+                    it = items.erase(it);
+                    log("current item size: %ld\n", items.size());
                     break;
                 }
                 case ITEM_MAGMA: {
@@ -492,7 +491,8 @@ void check_user_status(int uid) {
                     if (it->count <= 0) {
                         log("magma %d is exhausted\n", it->id);
                         battles[bid].num_of_other--;
-                        it = items.erase(it), is_erased = 1, if_erased = 1;
+                        it = items.erase(it);
+                        log("current item size: %ld\n", items.size());
                     }
                     break;
                 }
@@ -503,9 +503,10 @@ void check_user_status(int uid) {
                         log("user #%d %s@[%s] life exceeds max value\n", uid, sessions[uid].user_name, sessions[uid].ip_addr);
                         battles[bid].users[uid].life = MAX_LIFE;
                     }
+                    log("current item size: %ld\n", items.size());
                     battles[bid].num_of_other--;
                     send_to_client(uid, SERVER_MESSAGE_YOU_GOT_BLOOD_VIAL);
-                    it = items.erase(it), is_erased = 1, if_erased = 1;
+                    it = items.erase(it);
                     break;
                 }
                 case ITEM_BULLET: {
@@ -513,55 +514,28 @@ void check_user_status(int uid) {
                         battles[bid].users[uid].life = max(battles[bid].users[uid].life - 1, 0);
                         battles[bid].users[uid].killby = it->owner;
                         log("user #%d %s@[%s] is shooted\n", uid, sessions[uid].user_name, sessions[uid].ip_addr);
+                        log("current item size: %ld\n", items.size());
                         send_to_client(uid, SERVER_MESSAGE_YOU_ARE_SHOOTED);
-                        it = items.erase(it), is_erased = 1, if_erased = 1;
+                        it = items.erase(it);
                         break;
                     }
                     break;
                 }
             }
         }
-        if (!is_erased) it++;
     }
-    if (if_erased) log("current item size: %ld\n", items.size());
     //auto end_time = myclock();
     //log("completed.\n");
 }
 
-void check_who_is_shooted(int bid) {
+void check_all_user_status(int bid) {
     //for (int i = 0; i < MAX_ITEM; i++) {
     //log("checking...\n");
-    auto& items = battles[bid].items;
-    for (auto cur = items.begin(); cur != items.end();) {
-        if (cur->kind != ITEM_BULLET) {
-            cur++;
-            continue;
-        }
-
-        int ix = cur->pos.x;
-        int iy = cur->pos.y;
-        int is_erased = 0;
-
-        for (int j = 0; j < USER_CNT; j++) {
-            if (battles[bid].users[j].battle_state != BATTLE_STATE_LIVE)
-                continue;
-            int ux = battles[bid].users[j].pos.x;
-            int uy = battles[bid].users[j].pos.y;
-
-            if (ix == ux && iy == uy && cur->owner != j) {
-                battles[bid].users[j].life = max(battles[bid].users[j].life - 1, 0);
-                battles[bid].users[j].killby = cur->owner;
-                log("user #%d %s@[%s] shooted by #%d %s\n",
-                    j, sessions[j].user_name, sessions[j].ip_addr, 
-                    cur->owner, sessions[cur->owner].user_name);
-                send_to_client(j, SERVER_MESSAGE_YOU_ARE_SHOOTED);
-                cur = items.erase(cur), is_erased = 1;
-                break;
-            }
-        }
-        if (!is_erased) cur++;
-    }
     //log("completed.\n");
+    for (int i = 0; i < USER_CNT; i++) {
+        if (battles[bid].users[i].battle_state != BATTLE_STATE_LIVE) continue;
+        check_user_status(i);
+    }
 }
 
 void check_who_is_dead(int bid) {
@@ -590,6 +564,7 @@ void check_who_is_dead(int bid) {
         } else if (battles[bid].users[i].battle_state == BATTLE_STATE_DEAD) {
             battles[bid].users[i].battle_state = BATTLE_STATE_WITNESS;
             battles[bid].users[i].nr_bullets = 0;
+            battles[bid].users[i].life = 0;
         }
     }
 }
@@ -740,18 +715,19 @@ void* battle_ruler(void* args) {
     while (battles[bid].is_alloced) {
         battles[bid].global_time++;
         t[0] = myclock();
-        move_bullets(bid);
-        check_who_is_shooted(bid);
+        for (int i = 0; i < BULLET_SPEED; i++) {
+            move_bullets(bid);
+            check_all_user_status(bid);
+        }
         check_who_is_dead(bid);
         inform_all_user_battle_state(bid);
         inform_all_user_battle_player(bid);
         check_item_count(bid);
         random_generate_items(bid);
         t[1] = myclock();
-        if (t[1] - t[0] >= 10) logw("current delay %lums, size = %ld\n",
-                             t[1] - t[0], battles[bid].items.size());
+        if (t[1] - t[0] >= 5) logw("current delay %lums\n", t[1] - t[0]);
         sum_delay_time += t[1] - t[0];
-        while (myclock() < t[0] + GLOBAL_SPEED) usleep(100);
+        while (myclock() < t[0] + GLOBAL_SPEED) usleep(1000);
         if (myclock() > prev_time + 10000) {
             prev_time = myclock();
             log("total calulating time: %lums / 10s\n", sum_delay_time);
@@ -1505,6 +1481,7 @@ void* session_start(void* args) {
         int ret_code = handler[pcm->command](uid);
         t[1] = myclock();
         sum_delay_time += t[1] - t[0];
+        if (t[1] - t[0] >= 5) logw("current delay %lums\n", t[1] - t[0]);
         //log("state of user %s: %d\n", sessions[uid].user_name, sessions[uid].state);
         if (ret_code < 0) {
             log("close session #%d\n", uid);

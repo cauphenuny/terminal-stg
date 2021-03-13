@@ -1330,6 +1330,7 @@ void draw_users(server_message_t* psm) {
         if (map[y][x] == MAP_ITEM_GRASS) {
             set_cursor(x, y);
             printf("%s", map_s[map[y][x]]);
+            continue;
         }
         map[y][x] = MAP_ITEM_USER;
 
