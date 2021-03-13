@@ -1,7 +1,7 @@
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 
-#define SCR_W 79
+#define SCR_W 80
 #define SCR_H 23
 
 //#define BATTLE_W (SCR_W)

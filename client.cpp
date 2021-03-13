@@ -99,12 +99,14 @@ void save_login_info(char* name, char* password) {
     FILE* file = fopen(LOGIN_FILE, "w");
     if (file == NULL) return;
     fprintf(file, "%s\n%s", name, password);
+    fclose(file);
 }
 
 void read_login_info(char* name, char* password) {
     FILE* file = fopen(LOGIN_FILE, "r");
     if (file == NULL) return;
     fscanf(file, "%s%s", name, password);
+    fclose(file);
 }
 
 int connect_to_server() {
@@ -1414,7 +1416,7 @@ void draw_players(server_message_t* psm) {
         if (psm->users[i].namecolor != 0) {
             set_cursor(BATTLE_W, ++p);
             printf("%s%s%s(%d)", color_s[psm->users[i].namecolor], psm->users[i].name, color_s[0], psm->users[i].life);
-            set_cursor(BATTLE_W + 10, p);
+            set_cursor(BATTLE_W + 9, p);
             printf("%3d★  %d/%d", psm->users[i].score, psm->users[i].kill, psm->users[i].death);
         }
     }
