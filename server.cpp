@@ -6,6 +6,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 
+#include <cstdarg>
 #include <csignal>
 #include <cstring>
 #include <ctime>
@@ -37,6 +38,7 @@ void wrap_recv(int conn, client_message_t* pcm);
 void wrap_send(int conn, server_message_t* psm);
 
 void send_to_client(int uid, int message);
+void send_to_client(int uid, int message, char* str);
 void say_to_client(int uid, char* message);
 void send_to_client_with_username(int uid, int message, char* user_name);
 void close_session(int conn, int message);
@@ -59,6 +61,9 @@ struct session_t {
     int conn;
     int state;
     int is_admin;
+    int score;
+    int kill;
+    int death;
     uint32_t bid;
     uint32_t inviter_id;
     client_message_t cm;
@@ -105,8 +110,6 @@ class battle_t { public:
         int nr_bullets;
         int dir;
         int life;
-        int kill;
-        int death;
         int killby;
         pos_t pos;
         pos_t last_pos;
@@ -199,9 +202,11 @@ void user_quit_battle(uint32_t bid, uint32_t uid) {
 
     log("user %s@[%s] quit from battle %d(%ld users)\n", sessions[uid].user_name, sessions[uid].ip_addr, bid, battles[bid].nr_users);
     battles[bid].nr_users--;
+    if (battles[bid].users[uid].battle_state == BATTLE_STATE_LIVE) {
+        sessions[uid].score = max(sessions[uid].score - 5, 0);
+    }
     battles[bid].users[uid].battle_state = BATTLE_STATE_UNJOINED;
     sessions[uid].state = USER_STATE_LOGIN;
-
     if (battles[bid].nr_users == 0) {
         // disband battle
         log("disband battle %d\n", bid);
@@ -234,8 +239,6 @@ void user_join_battle_common_part(uint32_t bid, uint32_t uid, uint32_t joined_st
     }
 
     battles[bid].users[uid].life = INIT_LIFE;
-    battles[bid].users[uid].kill = 0;
-    battles[bid].users[uid].death = 0;
     battles[bid].users[uid].nr_bullets = INIT_BULLETS;
 
     sessions[uid].state = joined_state;
@@ -453,14 +456,15 @@ void check_user_status(int uid) {
     int uy = battles[bid].users[uid].pos.y;
     //for (int i = 0; i < MAX_ITEM; i++) {
     auto& items = battles[bid].items;
-    for (auto it = items.begin(), next = it; it != items.end(); it = next) {
+    bool if_erased = 0;
+    for (auto it = items.begin(); it != items.end();) {
 
-        next = std::next(it);
         int ix = it->pos.x;
         int iy = it->pos.y;
-        //bool is_erased = 0;
+        bool is_erased = 0;
 
         if (battles[bid].users[uid].battle_state != BATTLE_STATE_LIVE) {
+            it++;
             continue;
         }
 
@@ -474,8 +478,7 @@ void check_user_status(int uid) {
                         battles[bid].users[uid].nr_bullets = MAX_BULLETS;
                     }
                     send_to_client(uid, SERVER_MESSAGE_YOU_GOT_MAGAZINE);
-                    next = items.erase(it);
-                    log("current item size: %ld\n", items.size());
+                    it = items.erase(it), is_erased = 1, if_erased = 1;
                     break;
                 }
                 case ITEM_MAGMA: {
@@ -487,8 +490,7 @@ void check_user_status(int uid) {
                     if (it->count <= 0) {
                         log("magma %d is exhausted\n", it->id);
                         battles[bid].num_of_other--;
-                        next = items.erase(it);
-                        log("current item size: %ld\n", items.size());
+                        it = items.erase(it), is_erased = 1, if_erased = 1;
                     }
                     break;
                 }
@@ -501,8 +503,7 @@ void check_user_status(int uid) {
                     }
                     battles[bid].num_of_other--;
                     send_to_client(uid, SERVER_MESSAGE_YOU_GOT_BLOOD_VIAL);
-                    next = items.erase(it);
-                    log("current item size: %ld\n", items.size());
+                    it = items.erase(it), is_erased = 1, if_erased = 1;
                     break;
                 }
                 case ITEM_BULLET: {
@@ -511,15 +512,16 @@ void check_user_status(int uid) {
                         battles[bid].users[uid].killby = it->owner;
                         log("user #%d %s@[%s] is shooted\n", uid, sessions[uid].user_name, sessions[uid].ip_addr);
                         send_to_client(uid, SERVER_MESSAGE_YOU_ARE_SHOOTED);
-                        next = items.erase(it);
-                        log("current item size: %ld\n", items.size());
+                        it = items.erase(it), is_erased = 1, if_erased = 1;
                         break;
                     }
                     break;
                 }
             }
         }
+        if (!is_erased) it++;
     }
+    if (if_erased) log("current item size: %ld\n", items.size());
     //auto end_time = myclock();
     //log("completed.\n");
 }
@@ -528,14 +530,15 @@ void check_who_is_shooted(int bid) {
     //for (int i = 0; i < MAX_ITEM; i++) {
     //log("checking...\n");
     auto& items = battles[bid].items;
-    for (auto cur = items.begin(), next = cur; cur != items.end(); cur = next) {
-        next = std::next(cur);
+    for (auto cur = items.begin(); cur != items.end();) {
         if (cur->kind != ITEM_BULLET) {
+            cur++;
             continue;
         }
 
         int ix = cur->pos.x;
         int iy = cur->pos.y;
+        int is_erased = 0;
 
         for (int j = 0; j < USER_CNT; j++) {
             if (battles[bid].users[j].battle_state != BATTLE_STATE_LIVE)
@@ -550,10 +553,11 @@ void check_who_is_shooted(int bid) {
                     j, sessions[j].user_name, sessions[j].ip_addr, 
                     cur->owner, sessions[cur->owner].user_name);
                 send_to_client(j, SERVER_MESSAGE_YOU_ARE_SHOOTED);
-                next = items.erase(cur);
+                cur = items.erase(cur), is_erased = 1;
                 break;
             }
         }
+        if (!is_erased) cur++;
     }
     //log("completed.\n");
 }
@@ -566,12 +570,20 @@ void check_who_is_dead(int bid) {
             battles[bid].users[i].battle_state = BATTLE_STATE_DEAD;
             log("send dead info to user #%d %s@[%s]\n", i, sessions[i].user_name, sessions[i].ip_addr);
             send_to_client(i, SERVER_MESSAGE_YOU_ARE_DEAD);
-            battles[bid].users[i].death++;
-            log("death of user #%d %s@[%s]: %d\n", i, sessions[i].user_name, sessions[i].ip_addr, battles[bid].users[i].death);
+            sessions[i].death++;
+            log("death of user #%d %s@[%s]: %d\n", i, sessions[i].user_name, sessions[i].ip_addr, sessions[i].death);
             if (battles[bid].users[i].killby != -1) {
                 int by = battles[bid].users[i].killby;
-                battles[bid].users[by].kill++;
-                log("kill of user #%d %s@[%s]: %d\n", i, sessions[by].user_name, sessions[by].ip_addr, battles[bid].users[by].kill);
+                sessions[by].kill++;
+                log("kill of user #%d %s@[%s]: %d\n", i, sessions[by].user_name, sessions[by].ip_addr, sessions[by].kill);
+                double delta = (double)sessions[i].score / sessions[by].score;
+                delta = delta * delta;
+                int d = min(round(5. * delta), sessions[i].score);
+                sessions[i].score -= d;
+                sessions[by].score += d;
+                battles[bid].users[by].nr_bullets += battles[bid].users[i].nr_bullets;
+            } else {
+                sessions[i].score = max(sessions[i].score - 5, 0);
             }
         } else if (battles[bid].users[i].battle_state == BATTLE_STATE_DEAD) {
             battles[bid].users[i].battle_state = BATTLE_STATE_WITNESS;
@@ -653,17 +665,26 @@ void inform_all_user_battle_player(int bid) {
     for (int i = 0; i < USER_CNT; i++) {
         if (battles[bid].users[i].battle_state == BATTLE_STATE_LIVE && 
             battles[bid].users[i].life > 0) {
-            strncpy(sm.user_name[i], sessions[i].user_name, USERNAME_SIZE - 1);
-            sm.user_namecolor[i] = i % color_s_size + 1;
-            sm.user_life[i] = battles[bid].users[i].life;
-            sm.user_death[i] = battles[bid].users[i].death;
-            sm.user_kill[i] = battles[bid].users[i].kill;
+            strncpy(sm.users[i].name, sessions[i].user_name, USERNAME_SIZE - 1);
+            sm.users[i].namecolor = i % color_s_size + 1;
+            sm.users[i].life = battles[bid].users[i].life;
+            sm.users[i].score = sessions[i].score;
+            sm.users[i].death = sessions[i].death;
+            sm.users[i].kill = sessions[i].kill;
         } else {
-            strcpy(sm.user_name[i], (char*)"");
-            sm.user_namecolor[i] = 0;
-            sm.user_life[i] = 0;
-            sm.user_death[i] = 0;
-            sm.user_kill[i] = 0;
+            strcpy(sm.users[i].name, (char*)"");
+            sm.users[i].namecolor = 0;
+            sm.users[i].life = 0;
+            sm.users[i].score = 0;
+            sm.users[i].death = 0;
+            sm.users[i].kill = 0;
+        }
+    }
+    for (int i = 0; i < USER_CNT; i++) {
+        for (int j = i + 1; j < USER_CNT; j++) {
+            if (sm.users[i].score < sm.users[j].score) {
+                std::swap(sm.users[i], sm.users[j]);
+            }
         }
     }
     for (int i = 0; i < USER_CNT; i++) {
@@ -833,7 +854,10 @@ int client_command_user_login(int uid) {
     } else if (message == SERVER_RESPONSE_LOGIN_SUCCESS) {
         log("user %s login success\n", user_name);
         sessions[uid].state = USER_STATE_LOGIN;
-        send_to_client(uid, SERVER_RESPONSE_LOGIN_SUCCESS);
+        send_to_client(
+            uid, 
+            SERVER_RESPONSE_LOGIN_SUCCESS, 
+            sformat("Welcome to multiplayer shooting game! Server %s%s%s.", color_s[1], version, color_s[0]));
         strncpy(sessions[uid].user_name, user_name, USERNAME_SIZE - 1);
         inform_friends(uid, SERVER_MESSAGE_FRIEND_LOGIN);
     } else {
@@ -1277,8 +1301,6 @@ int admin_ban_user(char* args) {
         return 0;
     }
     if (sessions[uid].conn >= 0) {
-        char* message = (char*)malloc(MSG_SIZE);
-        sprintf(message, "admin banned user #%d %s@[%s]\n", uid, sessions[uid].user_name, sessions[uid].ip_addr);
         log("admin banned user #%d %s@[%s]\n", uid, sessions[uid].user_name, sessions[uid].ip_addr);
         send_to_client(uid, SERVER_STATUS_QUIT);
         log("close conn:%d\n", sessions[uid].conn);
@@ -1286,7 +1308,7 @@ int admin_ban_user(char* args) {
         sessions[uid].conn = -1;
         for (int i = 0; i < USER_CNT; i++) {
             if (sessions[i].conn >= 0) {
-                say_to_client(i, message);
+                say_to_client(i, sformat("admin banned user #%d %s@[%s]\n", uid, sessions[uid].user_name, sessions[uid].ip_addr));
             }
         }
     }
@@ -1413,7 +1435,17 @@ void send_to_client(int uid, int message) {
     wrap_send(conn, &sm);
 }
 
+void send_to_client(int uid, int message, char* str) {
+    int conn = sessions[uid].conn;
+    server_message_t sm;
+    memset(&sm, 0, sizeof(server_message_t));
+    sm.response = message;
+    strncpy(sm.msg, str, MSG_SIZE - 1);
+    wrap_send(conn, &sm);
+}
+
 void say_to_client(int uid, char *message) {
+    log("send message \"%s\" to %d\n", message, uid);
     int conn = sessions[uid].conn;
     server_message_t sm;
     memset(&sm, 0, sizeof(server_message_t));
@@ -1457,6 +1489,8 @@ void* session_start(void* args) {
             log("admin login!\n");
             sessions[uid].is_admin = 1;
         }
+        sessions[uid].death = sessions[uid].kill = 0;
+        sessions[uid].score = 50;
     }
 
     while (1) {
@@ -1582,7 +1616,7 @@ int main(int argc, char* argv[]) {
     for (int i = 0; i < USER_CNT; i++) {
         pthread_mutex_init(&items_lock[i], NULL);
     }
-    log("server " VERSION "\n");
+    log("server %s\n", version);
     //log("message_size = %ld\n", sizeof(server_message_t));
 
     server_fd = server_start();

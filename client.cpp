@@ -26,6 +26,7 @@ static int user_bullets = 0;
 static int user_state = USER_STATE_NOT_LOGIN;
 static char* user_name = (char*)"<unknown>";
 static char* log_file = (char*)"runtime.log";
+static char* global_server_str;
 static int map[BATTLE_H][BATTLE_W];
 
 static char* user_state_s[8];
@@ -517,20 +518,6 @@ char* readline() {
     return strdup(line);
 }
 
-char* sformat(const char* format, ...) {
-    static char text[1024];
-
-    va_list ap;
-    va_start(ap, format);
-    int len = vsprintf(text, format, ap);
-    va_end(ap);
-
-    if (len >= (int)sizeof(text))
-        eprintf("buffer overflow\n");
-
-    return text;
-}
-
 void bottom_bar_output(int line, const char* format, ...) {
     assert(line <= 0);
     lock_cursor();
@@ -897,6 +884,7 @@ void run_battle() {
             user_state = USER_STATE_LOGIN;
             send_command(CLIENT_COMMAND_QUIT_BATTLE);
             send_command(CLIENT_COMMAND_FETCH_ALL_FRIENDS);
+            memset(map, 0, sizeof(map));
             break;
         } else if (ch == '\t' || ch == ':') {
             wlog("type <TAB> and enter command mode\n");
@@ -1030,6 +1018,9 @@ int main_ui() {
         flip_screen();
         draw_button_in_main_ui();
         display_user_state();
+        if (strcmp(global_server_str, "") != 0) {
+            server_say(global_server_str);
+        }
         int sel = switch_selected_button_respond_to_key(buttonFFA, buttonLogout + 1);
         wlog("user select %d\n", sel);
 
@@ -1117,11 +1108,12 @@ int serv_response_you_have_registered(server_message_t* psm) {
 int serv_response_login_success(server_message_t* psm) {
     wlog("call message handler %s\n", __func__);
     wlog("==> try server_say\n");
-    server_say("welcome to simple net-based game");
     wlog("==> change user_state from %s into %s\n", user_state_s[user_state], user_state_s[USER_STATE_LOGIN]);
     user_state = USER_STATE_LOGIN;
     wlog("==> update user state to screen\n");
     display_user_state();
+    wlog("server say \"%s\"\n", psm->msg);
+    strncpy(global_server_str, psm->msg, MSG_SIZE - 1);
     return 0;
 }
 
@@ -1389,14 +1381,14 @@ void draw_players(server_message_t* psm) {
             putchar(' ');
         }
     }
-    set_cursor(BATTLE_W + 1, 0);
-    printf("players:");
+    set_cursor(BATTLE_W, 0);
+    printf("players:        K/D");
     for (int i = 0, p = 0; i < USER_CNT; i++) {
-        if (psm->user_namecolor[i] != 0) {
+        if (psm->users[i].namecolor != 0) {
             set_cursor(BATTLE_W, ++p);
-            printf("%s%s%s(%d)", color_s[psm->user_namecolor[i]], psm->user_name[i], color_s[0], psm->user_life[i]);
+            printf("%s%s%s(%d)", color_s[psm->users[i].namecolor], psm->users[i].name, color_s[0], psm->users[i].life);
             set_cursor(BATTLE_W + 10, p);
-            printf("50★  %d/%d", psm->user_kill[i], psm->user_death[i]);
+            printf("%3d★  %d/%d", psm->users[i].score, psm->users[i].kill, psm->users[i].death);
         }
     }
     fflush(stdout);
@@ -1545,6 +1537,7 @@ void init_local_constants();
 int main(int argc, char* argv[]) {
     init_constants();
     init_local_constants();
+    global_server_str = (char*)malloc(MSG_SIZE);
     if (access(log_file, F_OK) == 0) {
         remove(log_file);
     }
@@ -1559,7 +1552,7 @@ int main(int argc, char* argv[]) {
         strcpy(server_addr, "127.0.0.1");
     }
     wlog("====================START====================\n");
-    log("client " VERSION "\n");
+    log("client %s\n", version);
     client_fd = connect_to_server();
     if (signal(SIGSEGV, terminate) == SIG_ERR) {
         wlog("failed to set signal sigsegv");

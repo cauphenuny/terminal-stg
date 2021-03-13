@@ -1,3 +1,11 @@
+**2.6.0**
+- score change when being killed or killing others
+
+-----
+
+**2.5.0**
+- added scores on sidebar.
+
 **v2.4.0**
 
 - finally, I added Free-For-All mode.
