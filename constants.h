@@ -15,7 +15,7 @@
 #define IPADDR_SIZE 24
 #define USERNAME_SIZE  12
 #define MSG_SIZE 96
-#define USER_CNT   15
+#define USER_CNT   14
 
 #define PASSWORD_SIZE USERNAME_SIZE
 

@@ -202,15 +202,17 @@ void user_quit_battle(uint32_t bid, uint32_t uid) {
 
     log("user %s@[%s] quit from battle %d(%ld users)\n", sessions[uid].user_name, sessions[uid].ip_addr, bid, battles[bid].nr_users);
     battles[bid].nr_users--;
-    if (battles[bid].users[uid].battle_state == BATTLE_STATE_LIVE) {
+    if (battles[bid].nr_users != 0 && 
+        battles[bid].users[uid].battle_state == BATTLE_STATE_LIVE) {
         sessions[uid].score = max(sessions[uid].score - 5, 0);
+        sessions[uid].death ++;
     }
     battles[bid].users[uid].battle_state = BATTLE_STATE_UNJOINED;
     sessions[uid].state = USER_STATE_LOGIN;
     if (battles[bid].nr_users == 0) {
         // disband battle
         log("disband battle %d\n", bid);
-        battles[bid].is_alloced = false;
+        battles[bid].reset();
     } else {
         server_message_t sm;
         sm.message = SERVER_MESSAGE_USER_QUIT_BATTLE;
@@ -857,7 +859,7 @@ int client_command_user_login(int uid) {
         send_to_client(
             uid, 
             SERVER_RESPONSE_LOGIN_SUCCESS, 
-            sformat("Welcome to multiplayer shooting game! Server %s%s%s.", color_s[1], version, color_s[0]));
+            sformat("Server %s%s%s. Welcome to multiplayer shooting game!", color_s[1], version, color_s[0]));
         strncpy(sessions[uid].user_name, user_name, USERNAME_SIZE - 1);
         inform_friends(uid, SERVER_MESSAGE_FRIEND_LOGIN);
     } else {

@@ -1327,7 +1327,10 @@ void draw_users(server_message_t* psm) {
         y = psm->user_pos[i].y;
         if (!psm->user_color[i]) continue;
         if (x >= BATTLE_W || y >= BATTLE_H) continue;
-        if (map[y][x] == MAP_ITEM_GRASS) continue;
+        if (map[y][x] == MAP_ITEM_GRASS) {
+            set_cursor(x, y);
+            printf("%s", map_s[map[y][x]]);
+        }
         map[y][x] = MAP_ITEM_USER;
 
         set_cursor(x, y);
@@ -1525,6 +1528,7 @@ void start_message_monitor() {
 }
 
 void terminate(int signum) {
+    unlock_cursor();
     set_cursor(0, 0);
     if (signum == SIGINT) clear_screen();
     else                  flip_screen();
