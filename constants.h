@@ -30,10 +30,11 @@
 #define INIT_GRASS 5
 
 #define MAGMA_INIT_TIMES 10
-#define MAX_OTHER 30
+#define MAX_OTHER 20
 
 #define BULLETS_LASTS_TIME 300
 #define OTHER_ITEM_LASTS_TIME 1000
+
 #define GLOBAL_SPEED 30
 #define BULLET_SPEED 2
 

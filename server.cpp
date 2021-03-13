@@ -544,6 +544,7 @@ void check_who_is_dead(int bid) {
             && battles[bid].users[i].life <= 0) {
             log("user #%d %s@[%s] is dead\n", i, sessions[i].user_name, sessions[i].ip_addr);
             battles[bid].users[i].battle_state = BATTLE_STATE_DEAD;
+            battles[bid].nr_users--;
             log("send dead info to user #%d %s@[%s]\n", i, sessions[i].user_name, sessions[i].ip_addr);
             send_to_client(i, SERVER_MESSAGE_YOU_ARE_DEAD);
             sessions[i].death++;
@@ -1596,7 +1597,8 @@ int main(int argc, char* argv[]) {
         pthread_mutex_init(&items_lock[i], NULL);
     }
     log("server %s\n", version);
-    //log("message_size = %ld\n", sizeof(server_message_t));
+    if (sizeof(server_message_t) >= 1000)
+        logw("message_size = %ldB\n", sizeof(server_message_t));
 
     server_fd = server_start();
     load_user_list();

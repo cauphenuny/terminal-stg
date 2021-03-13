@@ -13,6 +13,7 @@
 #include "func.h"
 
 #define LINE_MAX_LEN 40
+#define LOGIN_FILE "login_info.log"
 
 #define wlog(fmt, ...) write_log("%s:%d: " fmt, user_name, __LINE__, ##__VA_ARGS__)
 #define wlogi(fmt, ...) write_log("%s:%d: ==> " fmt, user_name, __LINE__, ##__VA_ARGS__)
@@ -94,6 +95,18 @@ void strlwr(char* s) {
     }
 }
 
+void save_login_info(char* name, char* password) {
+    FILE* file = fopen(LOGIN_FILE, "w");
+    if (file == NULL) return;
+    fprintf(file, "%s\n%s", name, password);
+}
+
+void read_login_info(char* name, char* password) {
+    FILE* file = fopen(LOGIN_FILE, "r");
+    if (file == NULL) return;
+    fscanf(file, "%s%s", name, password);
+}
+
 int connect_to_server() {
     log("connecting to %s ...\n", server_addr);
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -172,10 +185,18 @@ enum {
 int button_login() {
     wlog("call button handler %s\n", __func__);
     wlogi("require name\n");
-    char* name = accept_input("your name: ");
+    static char *name = (char*)malloc(USERNAME_SIZE);
+    static char *password = (char*)malloc(PASSWORD_SIZE);
+    strcpy(name, ""), strcpy(password, "");
+    read_login_info(name, password);
+    if (strcmp(name, "") == 0) {
+        name = accept_input("your name: ");
+    }
     wlogi("input name '%s'\n", name);
 
-    char* password = accept_input("password: ");
+    if (strcmp(password, "") == 0) {
+        password = accept_input("password: ");
+    }
     wlogi("input password '%s'\n", password);
 
     bottom_bar_output(0, "try to login with name '%s' ...", name);
@@ -203,6 +224,7 @@ int button_login() {
     if (global_serv_message == SERVER_RESPONSE_LOGIN_SUCCESS) {
         send_command(CLIENT_COMMAND_FETCH_ALL_FRIENDS);
         user_name = name;
+        save_login_info(name, password);
     }
 
     wlogi("set user name to '%s'\n", name);
@@ -294,6 +316,7 @@ int button_logout() {
     user_state = USER_STATE_NOT_LOGIN;
     send_command(CLIENT_COMMAND_USER_LOGOUT);
     bottom_bar_output(0, "logout");
+    save_login_info((char*)"", (char*)"");
     return -1;
 }
 
@@ -1019,7 +1042,7 @@ int main_ui() {
         draw_button_in_main_ui();
         display_user_state();
         if (strcmp(global_server_str, "") != 0) {
-            server_say(global_server_str);
+            bottom_bar_output(0, "%s", global_server_str);
         }
         int sel = switch_selected_button_respond_to_key(buttonFFA, buttonLogout + 1);
         wlog("user select %d\n", sel);
