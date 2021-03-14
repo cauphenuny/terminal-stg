@@ -1,7 +1,7 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-const char* version = (char*)"v2.5.6";
+const char* version = (char*)"v2.5.7";
 
 #include <cstdio>
 #include <cstdlib>
@@ -88,17 +88,29 @@ const char* version = (char*)"v2.5.6";
 
 
 #define log(fmt, ...) \
-    fprintf(stderr, "\033[" VT100_STYLE_NORMAL ";" VT100_COLOR_BLUE "m[LOG] \033[0m" "%s:%d: " fmt, __func__, __LINE__, ## __VA_ARGS__)
+    fprintf(stderr, \
+    "\033[" VT100_STYLE_NORMAL ";" VT100_COLOR_BLUE "m[LOG] \033[0m" \
+    "\033[" VT100_STYLE_DARK ";" VT100_COLOR_NORMAL "m%s:%d: \033[0m" \
+    fmt "\n", __func__, __LINE__, ## __VA_ARGS__)
 
 #define logw(fmt, ...) \
-    fprintf(stderr, "\033[" VT100_STYLE_NORMAL ";" VT100_COLOR_YELLOW "m[WARN] \033[0m" "%s:%d: " fmt, __func__, __LINE__, ## __VA_ARGS__)
+    fprintf(stderr, \
+    "\033[" VT100_STYLE_NORMAL ";" VT100_COLOR_YELLOW "m[WARN] \033[0m" \
+    "\033[" VT100_STYLE_DARK ";" VT100_COLOR_NORMAL "m%s:%d: \033[0m" \
+    fmt "\n", __func__, __LINE__, ## __VA_ARGS__)
+
+#define loge(fmt, ...) \
+    fprintf(stderr, \
+    "\033[" VT100_STYLE_NORMAL ";" VT100_COLOR_RED "m[ERROR] \033[0m" \
+    "\033[" VT100_STYLE_DARK ";" VT100_COLOR_NORMAL "m%s:%d: \033[0m" \
+    fmt "\n", __func__, __LINE__, ## __VA_ARGS__)
 
 // inner log
 #define logi(fmt, ...) \
-    fprintf(stderr, "\033[" VT100_STYLE_NORMAL ";" VT100_COLOR_BLUE "m[LOG] \033[0m" "%s:%d: ==> " fmt, __func__, __LINE__, ## __VA_ARGS__)
-
-#define loge(fmt, ...) \
-    fprintf(stderr, "\033[" VT100_STYLE_NORMAL ";" VT100_COLOR_RED "m[ERROR] \033[0m" "%s:%d: " fmt, __func__, __LINE__, ## __VA_ARGS__)
+    fprintf(stderr, \
+    "\033[" VT100_STYLE_NORMAL ";" VT100_COLOR_BLUE "m[LOG] \033[0m" \
+    "\033[" VT100_STYLE_DARK ";" VT100_COLOR_NORMAL "m%s:%d: \033[0m" \
+    "==> " fmt "\n", __func__, __LINE__, ## __VA_ARGS__)
 
 #define eprintf(...) do { \
     loge(__VA_ARGS__); \

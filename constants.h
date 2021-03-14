@@ -1,11 +1,10 @@
+// constants for both server and client
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 
 #define SCR_W 80
 #define SCR_H 23
 
-//#define BATTLE_W (SCR_W)
-//#define BATTLE_H (SCR_H - 2)
 #define BATTLE_W 60
 #define BATTLE_H (SCR_H - 2)
 
@@ -19,25 +18,6 @@
 
 #define PASSWORD_SIZE USERNAME_SIZE
 
-#define INIT_BULLETS 12
-#define MAX_BULLETS 480
-#define BULLETS_PER_MAGAZINE 12
-
-#define INIT_LIFE 10
-#define MAX_LIFE 20
-#define LIFE_PER_VIAL 5
-
-#define INIT_GRASS 5
-
-#define MAGMA_INIT_TIMES 10
-#define MAX_OTHER 20
-
-#define BULLETS_LASTS_TIME 300
-#define OTHER_ITEM_LASTS_TIME 1000
-
-#define GLOBAL_SPEED 30
-#define BULLET_SPEED 2
-
 enum {
     ITEM_NONE,
     ITEM_MAGAZINE,
@@ -46,6 +26,7 @@ enum {
     ITEM_BLOOD_VIAL,
     ITEM_END,
     ITEM_BULLET,
+    ITEM_SIZE, // make it on the end!
 };
 
 enum {
@@ -119,10 +100,29 @@ enum {
 char* signal_name_s[128];
 char* color_s[128];
 char*  map_s[128];
+char* item_s[128];
+char* dir_s[128];
 int item_to_map[128];
 int color_s_size;
 
 void init_constants() {
+    item_s[ITEM_NONE] = (char*)"none";
+    item_s[ITEM_MAGAZINE] = (char*)"magazine";
+    item_s[ITEM_MAGMA] = (char*)"magma";
+    item_s[ITEM_GRASS] = (char*)"grass";
+    item_s[ITEM_BLOOD_VIAL] = (char*)"blood_vial";
+    item_s[ITEM_END] = (char*)"end";
+    item_s[ITEM_BULLET] = (char*)"bullet";
+
+    dir_s[DIR_UP] = (char*)"up";
+    dir_s[DIR_DOWN] = (char*)"down";
+    dir_s[DIR_LEFT] = (char*)"left";
+    dir_s[DIR_RIGHT] = (char*)"right";
+    dir_s[DIR_UP_LEFT] = (char*)"up_left";
+    dir_s[DIR_UP_RIGHT] = (char*)"up_right";
+    dir_s[DIR_DOWN_LEFT] = (char*)"down_left";
+    dir_s[DIR_DOWN_RIGHT] = (char*)"down_right";
+
     map_s[MAP_ITEM_NONE] = (char*)" ";
     map_s[MAP_ITEM_MAGAZINE] = (char*)"+";
     map_s[MAP_ITEM_MAGMA] = (char*)"X";

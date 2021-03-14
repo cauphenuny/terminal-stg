@@ -110,11 +110,11 @@ void read_login_info(char* name, char* password) {
 }
 
 int connect_to_server() {
-    log("connecting to %s ...\n", server_addr);
+    log("connecting to %s ...", server_addr);
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
 
     if (sockfd < 0) {
-        eprintf("Create Socket Failed!\n");
+        eprintf("Create Socket Failed!");
     }
 
     struct sockaddr_in servaddr;
@@ -132,7 +132,7 @@ int connect_to_server() {
         }
     }
     if (!binded) {
-        eprintf("Can Not Connet To Server %s.\n", server_addr);
+        eprintf("can not connet to server %s.", server_addr);
         exit(1);
     }
 
@@ -144,7 +144,7 @@ void wrap_send(client_message_t* pcm) {
     while (total_len < sizeof(client_message_t)) {
         size_t len = send(client_fd, pcm + total_len, sizeof(client_message_t) - total_len, 0);
         if (len < 0) {
-            loge("broken pipe\n");
+            loge("broken pipe");
         }
 
         total_len += len;
@@ -156,7 +156,7 @@ void wrap_recv(server_message_t* psm) {
     while (total_len < sizeof(server_message_t)) {
         size_t len = recv(client_fd, psm + total_len, sizeof(server_message_t) - total_len, 0);
         if (len < 0) {
-            loge("broken pipe\n");
+            loge("broken pipe");
         }
 
         total_len += len;
@@ -578,7 +578,7 @@ void display_user_state() {
 }
 
 void server_say(const char* message) {
-    bottom_bar_output(0, "\033[1;37m[%s]\033[0m %s", "server", message);
+    bottom_bar_output(0, "\033[2;37m[%s]\033[0m %s", "server", message);
 }
 
 void tiny_debug(const char* output) {
@@ -1582,7 +1582,7 @@ int main(int argc, char* argv[]) {
         strcpy(server_addr, "127.0.0.1");
     }
     wlog("====================START====================\n");
-    log("client %s\n", version);
+    log("client %s", version);
     client_fd = connect_to_server();
     if (signal(SIGSEGV, terminate) == SIG_ERR) {
         wlog("failed to set signal sigsegv");

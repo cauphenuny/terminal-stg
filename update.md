@@ -1,4 +1,8 @@
 -----
+**v2.5.7**
+- make server message more readable(change func&line info to color gray).
+
+-----
 **v2.5.4**
 - client can save the name and password when you login the first time, and next time you needn't input it.
 
