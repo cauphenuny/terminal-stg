@@ -13,7 +13,7 @@
 #include "func.h"
 
 #define LINE_MAX_LEN 40
-#define LOGIN_FILE "login_info.log"
+#define LOGIN_FILE "login.log"
 
 #define wlog(fmt, ...) write_log("%s:%d: " fmt, user_name, __LINE__, ##__VA_ARGS__)
 #define wlogi(fmt, ...) write_log("%s:%d: ==> " fmt, user_name, __LINE__, ##__VA_ARGS__)
