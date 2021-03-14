@@ -118,10 +118,10 @@ void init_constants() {
     dir_s[DIR_DOWN] = (char*)"down";
     dir_s[DIR_LEFT] = (char*)"left";
     dir_s[DIR_RIGHT] = (char*)"right";
-    dir_s[DIR_UP_LEFT] = (char*)"up_left";
-    dir_s[DIR_UP_RIGHT] = (char*)"up_right";
-    dir_s[DIR_DOWN_LEFT] = (char*)"down_left";
-    dir_s[DIR_DOWN_RIGHT] = (char*)"down_right";
+    dir_s[DIR_UP_LEFT] = (char*)"up&left";
+    dir_s[DIR_UP_RIGHT] = (char*)"up&right";
+    dir_s[DIR_DOWN_LEFT] = (char*)"down&left";
+    dir_s[DIR_DOWN_RIGHT] = (char*)"down&right";
 
     map_s[MAP_ITEM_NONE] = (char*)" ";
     map_s[MAP_ITEM_MAGAZINE] = (char*)"+";

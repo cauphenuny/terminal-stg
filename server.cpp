@@ -255,7 +255,7 @@ void user_join_battle(uint32_t bid, uint32_t uid) {
     int uy = (rand() & 0x7FFF) % BATTLE_H;
     battles[bid].users[uid].pos.x = ux;
     battles[bid].users[uid].pos.y = uy;
-    log("alloc position (%hhu, %hhu) for launcher ##%d %s\033[2m(%s)\033[0m",
+    log("alloc position (%hhu, %hhu) for launcher #%d %s\033[2m(%s)\033[0m",
         ux, uy, uid, sessions[uid].user_name, sessions[uid].ip_addr);
 
     sessions[uid].state = USER_STATE_BATTLE;
@@ -1188,12 +1188,12 @@ int client_command_fire(int uid, int delta_x, int delta_y, int dir) {
 
     if (battles[bid].users[uid].energy <= 0) {
         send_to_client(uid, SERVER_MESSAGE_YOUR_MAGAZINE_IS_EMPTY);
-        return 1;
+        return -1;
     }
     int x = battles[bid].users[uid].pos.x + delta_x;
     int y = battles[bid].users[uid].pos.y + delta_y;
-    if (x < 0 || x >= BATTLE_W) return 0;
-    if (y < 0 || y >= BATTLE_H) return 0;
+    if (x < 0 || x >= BATTLE_W) return 1;
+    if (y < 0 || y >= BATTLE_H) return 1;
     log("user #%d %s\033[2m(%s)\033[0m fire %s", uid, sessions[uid].user_name, sessions[uid].ip_addr, dir_s[dir]);
     item_t new_item;
     new_item.id = ++battles[bid].item_count;
@@ -1253,43 +1253,49 @@ int client_command_fire_down_right(int uid) {
 
 int client_command_fire_aoe(int uid, int dir) {
     log("user #%d %s\033[2m(%s)\033[0m fire(aoe) %s", uid, sessions[uid].user_name, sessions[uid].ip_addr, dir_s[dir]);
-    int limit = battles[sessions[uid].bid].users[uid].energy / 2;
+    logi("call client_command_fire");
+    int limit = battles[sessions[uid].bid].users[uid].energy / 2, cnt = 0;
     for (int i = 0; limit; i++) {
         for (int j = -i; j <= i && limit; j++) {
             switch (dir) {
-                case DIR_UP:
-                    if (client_command_fire(uid, j, -i + abs(j), dir) != 0) return 0;
+                case DIR_UP: {
+                    if (client_command_fire(uid, j, -i + abs(j), dir) == 0) cnt++;
                     break;
-                case DIR_DOWN:
-                    if (client_command_fire(uid, j, i - abs(j), dir) != 0) return 0;
+                }
+                case DIR_DOWN: {
+                    if (client_command_fire(uid, j, i - abs(j), dir) == 0) cnt++;
                     break;
-                case DIR_LEFT:
-                    if (client_command_fire(uid, -i + abs(j), j, dir) != 0) return 0;
+                }
+                case DIR_LEFT: {
+                    if (client_command_fire(uid, -i + abs(j), j, dir) == 0) cnt++;
                     break;
-                case DIR_RIGHT:
-                    if (client_command_fire(uid, i - abs(j), j, dir) != 0) return 0;
+                }
+                case DIR_RIGHT: {
+                    if (client_command_fire(uid, i - abs(j), j, dir) == 0) cnt++;
                     break;
+                }
             }
             limit--;
         }
     }
+    log("created %d bullets", cnt);
     return 0;
 }
 
 int client_command_fire_aoe_up(int uid) {
-    logi("client_command_fire_aoe");
+    logi("call client_command_fire_aoe");
     return client_command_fire_aoe(uid, DIR_UP);
 }
 int client_command_fire_aoe_down(int uid) {
-    logi("client_command_fire_aoe");
+    logi("call client_command_fire_aoe");
     return client_command_fire_aoe(uid, DIR_DOWN);
 }
 int client_command_fire_aoe_left(int uid) {
-    logi("client_command_fire_aoe");
+    logi("call client_command_fire_aoe");
     return client_command_fire_aoe(uid, DIR_LEFT);
 }
 int client_command_fire_aoe_right(int uid) {
-    logi("client_command_fire_aoe");
+    logi("call client_command_fire_aoe");
     return client_command_fire_aoe(uid, DIR_RIGHT);
 }
 
