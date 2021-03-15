@@ -1618,6 +1618,9 @@ int main(int argc, char* argv[]) {
     if (signal(SIGTERM, terminate_entrance) == SIG_ERR) {
         eprintf("an error occurred while setting a signal handler.");
     }
+    if (signal(SIGTRAP, terminate_entrance) == SIG_ERR) {
+        eprintf("an error occurred while setting a signal handler.");
+    }
 
     for (int i = 0; i < USER_CNT; i++) {
         pthread_mutex_init(&items_lock[i], NULL);

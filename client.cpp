@@ -28,6 +28,7 @@ static int user_state = USER_STATE_NOT_LOGIN;
 static char* user_name = (char*)"<unknown>";
 static char* log_file = (char*)"runtime.log";
 static char* global_server_str;
+static int login_failed;
 static int map[BATTLE_H][BATTLE_W];
 
 static char* user_state_s[8];
@@ -190,7 +191,7 @@ int button_login() {
     static char *name = (char*)malloc(USERNAME_SIZE);
     static char *password = (char*)malloc(PASSWORD_SIZE);
     strcpy(name, ""), strcpy(password, "");
-    read_login_info(name, password);
+    if (login_failed == 0) read_login_info(name, password);
     if (strcmp(name, "") == 0) {
         name = accept_input("your name: ");
     }
@@ -226,7 +227,10 @@ int button_login() {
     if (global_serv_message == SERVER_RESPONSE_LOGIN_SUCCESS) {
         send_command(CLIENT_COMMAND_FETCH_ALL_FRIENDS);
         user_name = name;
+        login_failed = 0;
         save_login_info(name, password);
+    } else {
+        login_failed = 1;
     }
 
     wlogi("set user name to '%s'\n", name);
@@ -1592,6 +1596,9 @@ int main(int argc, char* argv[]) {
     }
     if (signal(SIGABRT, terminate) == SIG_ERR) {
         wlog("failed to set signal sigabrt");
+    }
+    if (signal(SIGTRAP, terminate) == SIG_ERR) {
+        wlog("failed to set signal sigtrap");
     }
 
     flip_screen();

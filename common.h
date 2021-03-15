@@ -13,60 +13,6 @@ const char* version = (char*)"v2.5.7";
 #include <unistd.h>
 #include <termios.h>
 
-/* some special characters(terminal graph):
- *
- *  ▁ ▂ ▃ ▄ ▅ ▆ ▇ █ ▊ ▌ ▎ ▖ ▗ ▘ ▙ ▚ ▛ ▜ ▝ ▞ ▟ ━ ┃
- *
- *  ┏ ┓ ┗ ┛ ┣ ┫ ┳ ┻ ╋ ╸ ╹ ╺
- *
- *  ╻ ╏ ─ ─ │ │ ╴ ╴ ╵ ╵ ╶ ╶ ╵ ╵ ⎢ ⎥ ⎺ ⎻ ⎼ ⎽ ◾ ▪ ╱ ╲ ╳ 
- *
- *  ■ □ ★ ☆ ◆ ◇ ◣ ◢  ◤ ◥ ▲ △ ▼ ▽ ⊿ 
- *
- *  ┌─┬─┐
- *  │ │ │
- *  ├─┼─┤
- *  │ │ │
- *  └─┴─┘
- *
- * */
-
-/* output colored text
- *   for example:
- *     printf("\033[{style};{color}mHello World!\n\033[0m");
- *
- *     where {style} is interger range from 0 to 4, {color} is a
- *     interger range from 30 to 38
- *
- *
- * 256 color support:
- *   control code: "\033[48;5;{color}m" or "\033[38;5;{color}m"
- *
- *   where {color} is a interger range from 0 to 255, see more
- *   details in 256-colors.py
- *
- *
- * cursor move:
- *   control code: "\033"  (\033 is ascii code of <esc>)
- *
- *   cursor up:             "\033[{count}A"
- *        moves the cursor up by count rows;
- *        the default count is 1.
- *
- *     cursor down:           "\033[{count}B"
- *        moves the cursor down by count rows;
- *        the default count is 1.
- *
- *     cursor forward:        "\033[{count}C"
- *        moves the cursor forward by count columns;
- *        the default count is 1.
- *
- *     cursor backward:       "\033[{count}D"
- *        moves the cursor backward by count columns;
- *        the default count is 1.
- *
- *     set cursor position:   "\033[{row};{column}f"
- */
 
 /* output style: 16 color mode */
 #define VT100_STYLE_NORMAL     "0"
@@ -265,4 +211,58 @@ enum {
     SERVER_STATUS_FATAL,
 };
 
+/* some special characters(terminal graph):
+ *
+ *  ▁ ▂ ▃ ▄ ▅ ▆ ▇ █ ▊ ▌ ▎ ▖ ▗ ▘ ▙ ▚ ▛ ▜ ▝ ▞ ▟ ━ ┃
+ *
+ *  ┏ ┓ ┗ ┛ ┣ ┫ ┳ ┻ ╋ ╸ ╹ ╺
+ *
+ *  ╻ ╏ ─ ─ │ │ ╴ ╴ ╵ ╵ ╶ ╶ ╵ ╵ ⎢ ⎥ ⎺ ⎻ ⎼ ⎽ ◾ ▪ ╱ ╲ ╳ 
+ *
+ *  ■ □ ★ ☆ ◆ ◇ ◣ ◢  ◤ ◥ ▲ △ ▼ ▽ ⊿ 
+ *
+ *  ┌─┬─┐
+ *  │ │ │
+ *  ├─┼─┤
+ *  │ │ │
+ *  └─┴─┘
+ *
+ * */
+
+/* output colored text
+ *   for example:
+ *     printf("\033[{style};{color}mHello World!\n\033[0m");
+ *
+ *     where {style} is interger range from 0 to 4, {color} is a
+ *     interger range from 30 to 38
+ *
+ *
+ * 256 color support:
+ *   control code: "\033[48;5;{color}m" or "\033[38;5;{color}m"
+ *
+ *   where {color} is a interger range from 0 to 255, see more
+ *   details in 256-colors.py
+ *
+ *
+ * cursor move:
+ *   control code: "\033"  (\033 is ascii code of <esc>)
+ *
+ *   cursor up:             "\033[{count}A"
+ *        moves the cursor up by count rows;
+ *        the default count is 1.
+ *
+ *     cursor down:           "\033[{count}B"
+ *        moves the cursor down by count rows;
+ *        the default count is 1.
+ *
+ *     cursor forward:        "\033[{count}C"
+ *        moves the cursor forward by count columns;
+ *        the default count is 1.
+ *
+ *     cursor backward:       "\033[{count}D"
+ *        moves the cursor backward by count columns;
+ *        the default count is 1.
+ *
+ *     set cursor position:   "\033[{row};{column}f"
+ */
 #endif
