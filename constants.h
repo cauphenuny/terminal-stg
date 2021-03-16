@@ -5,8 +5,8 @@
 #define SCR_W 80
 #define SCR_H 23
 
-#define BATTLE_W 40
-#define BATTLE_H 12
+#define BATTLE_W 60
+#define BATTLE_H (SCR_H - 2)
 
 #define FFA_MAP_W BATTLE_W
 #define FFA_MAP_H BATTLE_H

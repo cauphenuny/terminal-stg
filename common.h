@@ -1,7 +1,7 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-const char* version = (char*)"v2.5.7";
+const char* version = (char*)"v2.5.8";
 
 #include <cstdio>
 #include <cstdlib>

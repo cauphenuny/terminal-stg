@@ -728,13 +728,13 @@ void* battle_ruler(void* args) {
     while (battles[bid].is_alloced) {
         battles[bid].global_time++;
         t[0] = myclock();
-        for (int i = 0; i < BULLET_SPEED; i++) {
-            move_bullets(bid);
-            check_all_user_status(bid);
-        }
+        move_bullets(bid);
+        check_all_user_status(bid);
         check_who_is_dead(bid);
         inform_all_user_battle_state(bid);
-        inform_all_user_battle_player(bid);
+        if (battles[bid].global_time % 10 == 0) {
+            inform_all_user_battle_player(bid);
+        }
         check_item_count(bid);
         random_generate_items(bid);
         t[1] = myclock();

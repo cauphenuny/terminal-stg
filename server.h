@@ -19,7 +19,7 @@ static int LIFE_PER_VIAL = 5;
 static int BULLETS_LASTS_TIME = 300;
 static int OTHER_ITEM_LASTS_TIME = 1000;
 
-#define GLOBAL_SPEED 30
+#define GLOBAL_SPEED 20
 #define BULLET_SPEED 2
 
 #endif
