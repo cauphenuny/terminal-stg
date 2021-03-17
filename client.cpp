@@ -13,7 +13,6 @@
 #include "func.h"
 
 #define LINE_MAX_LEN 40
-#define LOGIN_FILE "login.log"
 
 #define wlog(fmt, ...) write_log("%s:%d: " fmt, user_name, __LINE__, ##__VA_ARGS__)
 #define wlogi(fmt, ...) write_log("%s:%d: ==> " fmt, user_name, __LINE__, ##__VA_ARGS__)
@@ -27,8 +26,6 @@ static int user_bullets = 0;
 static int user_state = USER_STATE_NOT_LOGIN;
 static char* user_name = (char*)"<unknown>";
 static char* log_file = (char*)"runtime.log";
-static char* global_server_str;
-static int login_failed;
 static int map[BATTLE_H][BATTLE_W];
 
 static char* user_state_s[8];
@@ -96,26 +93,12 @@ void strlwr(char* s) {
     }
 }
 
-void save_login_info(char* name, char* password) {
-    FILE* file = fopen(LOGIN_FILE, "w");
-    if (file == NULL) return;
-    fprintf(file, "%s\n%s", name, password);
-    fclose(file);
-}
-
-void read_login_info(char* name, char* password) {
-    FILE* file = fopen(LOGIN_FILE, "r");
-    if (file == NULL) return;
-    fscanf(file, "%s%s", name, password);
-    fclose(file);
-}
-
 int connect_to_server() {
-    log("connecting to %s ...", server_addr);
+    log("connecting to %s ...\n", server_addr);
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
 
     if (sockfd < 0) {
-        eprintf("Create Socket Failed!");
+        eprintf("Create Socket Failed!\n");
     }
 
     struct sockaddr_in servaddr;
@@ -133,7 +116,7 @@ int connect_to_server() {
         }
     }
     if (!binded) {
-        eprintf("can not connet to server %s.", server_addr);
+        eprintf("Can Not Connet To Server %s.\n", server_addr);
         exit(1);
     }
 
@@ -145,7 +128,7 @@ void wrap_send(client_message_t* pcm) {
     while (total_len < sizeof(client_message_t)) {
         size_t len = send(client_fd, pcm + total_len, sizeof(client_message_t) - total_len, 0);
         if (len < 0) {
-            loge("broken pipe");
+            loge("broken pipe\n");
         }
 
         total_len += len;
@@ -157,7 +140,7 @@ void wrap_recv(server_message_t* psm) {
     while (total_len < sizeof(server_message_t)) {
         size_t len = recv(client_fd, psm + total_len, sizeof(server_message_t) - total_len, 0);
         if (len < 0) {
-            loge("broken pipe");
+            loge("broken pipe\n");
         }
 
         total_len += len;
@@ -188,18 +171,10 @@ enum {
 int button_login() {
     wlog("call button handler %s\n", __func__);
     wlogi("require name\n");
-    static char *name = (char*)malloc(USERNAME_SIZE);
-    static char *password = (char*)malloc(PASSWORD_SIZE);
-    strcpy(name, ""), strcpy(password, "");
-    if (login_failed == 0) read_login_info(name, password);
-    if (strcmp(name, "") == 0) {
-        name = accept_input("your name: ");
-    }
+    char* name = accept_input("your name: ");
     wlogi("input name '%s'\n", name);
 
-    if (strcmp(password, "") == 0) {
-        password = accept_input("password: ");
-    }
+    char* password = accept_input("password: ");
     wlogi("input password '%s'\n", password);
 
     bottom_bar_output(0, "try to login with name '%s' ...", name);
@@ -227,10 +202,6 @@ int button_login() {
     if (global_serv_message == SERVER_RESPONSE_LOGIN_SUCCESS) {
         send_command(CLIENT_COMMAND_FETCH_ALL_FRIENDS);
         user_name = name;
-        login_failed = 0;
-        save_login_info(name, password);
-    } else {
-        login_failed = 1;
     }
 
     wlogi("set user name to '%s'\n", name);
@@ -322,7 +293,6 @@ int button_logout() {
     user_state = USER_STATE_NOT_LOGIN;
     send_command(CLIENT_COMMAND_USER_LOGOUT);
     bottom_bar_output(0, "logout");
-    save_login_info((char*)"", (char*)"");
     return -1;
 }
 
@@ -547,6 +517,20 @@ char* readline() {
     return strdup(line);
 }
 
+char* sformat(const char* format, ...) {
+    static char text[1024];
+
+    va_list ap;
+    va_start(ap, format);
+    int len = vsprintf(text, format, ap);
+    va_end(ap);
+
+    if (len >= (int)sizeof(text))
+        eprintf("buffer overflow\n");
+
+    return text;
+}
+
 void bottom_bar_output(int line, const char* format, ...) {
     assert(line <= 0);
     lock_cursor();
@@ -582,7 +566,7 @@ void display_user_state() {
 }
 
 void server_say(const char* message) {
-    bottom_bar_output(0, "\033[2;37m[%s]\033[0m %s", "server", message);
+    bottom_bar_output(0, "\033[1;37m[%s]\033[0m %s", "server", message);
 }
 
 void tiny_debug(const char* output) {
@@ -913,7 +897,6 @@ void run_battle() {
             user_state = USER_STATE_LOGIN;
             send_command(CLIENT_COMMAND_QUIT_BATTLE);
             send_command(CLIENT_COMMAND_FETCH_ALL_FRIENDS);
-            memset(map, 0, sizeof(map));
             break;
         } else if (ch == '\t' || ch == ':') {
             wlog("type <TAB> and enter command mode\n");
@@ -1047,9 +1030,6 @@ int main_ui() {
         flip_screen();
         draw_button_in_main_ui();
         display_user_state();
-        if (strcmp(global_server_str, "") != 0) {
-            bottom_bar_output(0, "%s", global_server_str);
-        }
         int sel = switch_selected_button_respond_to_key(buttonFFA, buttonLogout + 1);
         wlog("user select %d\n", sel);
 
@@ -1137,12 +1117,11 @@ int serv_response_you_have_registered(server_message_t* psm) {
 int serv_response_login_success(server_message_t* psm) {
     wlog("call message handler %s\n", __func__);
     wlog("==> try server_say\n");
+    server_say("welcome to simple net-based game");
     wlog("==> change user_state from %s into %s\n", user_state_s[user_state], user_state_s[USER_STATE_LOGIN]);
     user_state = USER_STATE_LOGIN;
     wlog("==> update user state to screen\n");
     display_user_state();
-    wlog("server say \"%s\"\n", psm->msg);
-    strncpy(global_server_str, psm->msg, MSG_SIZE - 1);
     return 0;
 }
 
@@ -1356,11 +1335,7 @@ void draw_users(server_message_t* psm) {
         y = psm->user_pos[i].y;
         if (!psm->user_color[i]) continue;
         if (x >= BATTLE_W || y >= BATTLE_H) continue;
-        if (map[y][x] == MAP_ITEM_GRASS) {
-            set_cursor(x, y);
-            printf("%s", map_s[map[y][x]]);
-            continue;
-        }
+        if (map[y][x] == MAP_ITEM_GRASS) continue;
         map[y][x] = MAP_ITEM_USER;
 
         set_cursor(x, y);
@@ -1414,14 +1389,14 @@ void draw_players(server_message_t* psm) {
             putchar(' ');
         }
     }
-    set_cursor(BATTLE_W, 0);
-    printf("players:        K/D");
+    set_cursor(BATTLE_W + 1, 0);
+    printf("players:");
     for (int i = 0, p = 0; i < USER_CNT; i++) {
-        if (psm->users[i].namecolor != 0) {
+        if (psm->user_namecolor[i] != 0) {
             set_cursor(BATTLE_W, ++p);
-            printf("%s%s%s(%d)", color_s[psm->users[i].namecolor], psm->users[i].name, color_s[0], psm->users[i].life);
-            set_cursor(BATTLE_W + 9, p);
-            printf("%3d★  %d/%d", psm->users[i].score, psm->users[i].kill, psm->users[i].death);
+            printf("%s%s%s(%d)", color_s[psm->user_namecolor[i]], psm->user_name[i], color_s[0], psm->user_life[i]);
+            set_cursor(BATTLE_W + 10, p);
+            printf("50★  %d/%d", psm->user_kill[i], psm->user_death[i]);
         }
     }
     fflush(stdout);
@@ -1558,7 +1533,6 @@ void start_message_monitor() {
 }
 
 void terminate(int signum) {
-    unlock_cursor();
     set_cursor(0, 0);
     if (signum == SIGINT) clear_screen();
     else                  flip_screen();
@@ -1571,7 +1545,6 @@ void init_local_constants();
 int main(int argc, char* argv[]) {
     init_constants();
     init_local_constants();
-    global_server_str = (char*)malloc(MSG_SIZE);
     if (access(log_file, F_OK) == 0) {
         remove(log_file);
     }
@@ -1586,7 +1559,7 @@ int main(int argc, char* argv[]) {
         strcpy(server_addr, "127.0.0.1");
     }
     wlog("====================START====================\n");
-    log("client %s", version);
+    log("client " VERSION "\n");
     client_fd = connect_to_server();
     if (signal(SIGSEGV, terminate) == SIG_ERR) {
         wlog("failed to set signal sigsegv");
@@ -1596,9 +1569,6 @@ int main(int argc, char* argv[]) {
     }
     if (signal(SIGABRT, terminate) == SIG_ERR) {
         wlog("failed to set signal sigabrt");
-    }
-    if (signal(SIGTRAP, terminate) == SIG_ERR) {
-        wlog("failed to set signal sigtrap");
     }
 
     flip_screen();

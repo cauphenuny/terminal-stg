@@ -1,17 +1,3 @@
------
-**v2.5.7**
-- make server message more readable(change func&line info to color gray).
-
------
-**v2.5.4**
-- client can save the name and password when you login the first time, and next time you needn't input it.
-
------
-
-**2.5.0**
-- added scores (like 50★ ) on sidebar, it will change when you kill other or be killed.
--------
-
 **v2.4.0**
 
 - finally, I added Free-For-All mode.
@@ -25,7 +11,7 @@
 **v2.2.0**
 
 - add players kill-death info on the right sidebar.
--------
+
 
 **v2.1.0**
 - add players info on the right sidebar.  

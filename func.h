@@ -21,18 +21,4 @@ uint64_t myclock() {
     return tv.tv_sec * 1000 + tv.tv_usec / 1000;
 }
 
-char* sformat(const char* format, ...) {
-    static char text[1024];
-
-    va_list ap;
-    va_start(ap, format);
-    int len = vsprintf(text, format, ap);
-    va_end(ap);
-
-    if (len >= (int)sizeof(text))
-        eprintf("buffer overflow\n");
-
-    return text;
-}
-
 #endif
