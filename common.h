@@ -1,6 +1,9 @@
 #ifndef COMMON_H
 #define COMMON_H
 
+#pragma GCC diagnostic ignored "-Wstringop-truncation"
+#pragma GCC diagnostic ignored "-Wunused-result"
+
 const char* version = (char*)"v2.5.8";
 
 #include <cstdio>

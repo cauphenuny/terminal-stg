@@ -702,7 +702,7 @@ int cmd_admin(char* args) {
     client_message_t cm;
     cm.command = CLIENT_COMMAND_ADMIN_CONTROL;
     strncpy(cm.user_name, user_name, USERNAME_SIZE - 1);
-    strncpy(cm.user_name, args, MSG_SIZE - 1);
+    strncpy(cm.user_name, args, USERNAME_SIZE - 1);
     wrap_send(&cm);
     return 0;
 }
