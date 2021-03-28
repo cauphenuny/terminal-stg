@@ -1,4 +1,8 @@
 -----
+**v2.5.9**
+- fixed bug that client may disconnect to server in battle.
+
+-----
 **v2.5.7**
 - make server message more readable(change func&line info to color gray).
 
@@ -19,7 +23,7 @@
 --------
 **v2.3.0**
 
-- changed container to std::list, made server even more faster.
+- changed item container to std::list, made server even more faster.
 
 -----------
 **v2.2.0**
@@ -34,7 +38,7 @@
 
 **v2.0.0**  
 - changed server message transporting method,   
-changed map generating method, (client ==> server) made server faster.  
+- changed map generating method, (client ==> server) made connect faster.
 - get every player a unique color.  
 - optimized bullets display, make your bullets different from other player'sbullets.  
   
@@ -85,4 +89,4 @@ changed map generating method, (client ==> server) made server faster.
 - fix Ctrl-C bug, add server can save userlist.  
   
 --------------------------------------------------
-author: ycpedef  
+author: ycpedef 

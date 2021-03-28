@@ -172,16 +172,16 @@ void load_user_list() {
 void save_user_list() {
     FILE* userlist = fopen(REGISTERED_USER_FILE, "w");
     for (int i = 0; i < user_list_size; i++) {
-        fprintf(userlist, "%s", registered_user_list[i].user_name);
-        fprintf(userlist, "%s", registered_user_list[i].password);
+        fprintf(userlist, "%s\n", registered_user_list[i].user_name);
+        fprintf(userlist, "%s\n", registered_user_list[i].password);
     }
     log("saved %d users to " REGISTERED_USER_FILE ".", user_list_size);
 }
 
 void save_user(int i) {
     FILE* userlist = fopen(REGISTERED_USER_FILE, "a");
-    fprintf(userlist, "%s", registered_user_list[i].user_name);
-    fprintf(userlist, "%s", registered_user_list[i].password);
+    fprintf(userlist, "%s\n", registered_user_list[i].user_name);
+    fprintf(userlist, "%s\n", registered_user_list[i].password);
     log("saved users %s to " REGISTERED_USER_FILE ".", registered_user_list[i].user_name);
 }
 
@@ -560,6 +560,8 @@ void check_who_is_dead(int bid) {
                 log("kill of user #%d %s\033[2m(%s)\033[0m: %d", i, sessions[by].user_name, sessions[by].ip_addr, sessions[by].kill);
                 double delta = (double)sessions[i].score / sessions[by].score;
                 delta = delta * delta;
+                if (delta > 4) delta = 4;
+                if (delta < 0.2) delta = 0.2;
                 int d = min(round(5. * delta), sessions[i].score);
                 sessions[i].score -= d;
                 sessions[by].score += d;
@@ -575,7 +577,7 @@ void check_who_is_dead(int bid) {
     }
 }
 
-void check_item_count(int bid) {
+void clear_items(int bid) {
     //log("call func %s", __func__);
     //for (int i = 0; i < MAX_ITEM; i++) {
     //    if (battles[bid].items[i].times) {
@@ -735,7 +737,7 @@ void* battle_ruler(void* args) {
         if (battles[bid].global_time % 10 == 0) {
             inform_all_user_battle_player(bid);
         }
-        check_item_count(bid);
+        clear_items(bid);
         random_generate_items(bid);
         t[1] = myclock();
         if (t[1] - t[0] >= 5) logw("current delay %lums", t[1] - t[0]);
@@ -844,7 +846,7 @@ int client_command_user_login(int uid) {
         send_to_client(
             uid, 
             SERVER_RESPONSE_LOGIN_SUCCESS, 
-            sformat("Server %s%s%s. Welcome to multiplayer shooting game!", color_s[1], version, color_s[0]));
+            sformat("Welcome to multiplayer shooting game! server \033[0;32m%s%s", version, color_s[0]));
         strncpy(sessions[uid].user_name, user_name, USERNAME_SIZE - 1);
         inform_friends(uid, SERVER_MESSAGE_FRIEND_LOGIN);
     } else {

@@ -3,10 +3,10 @@
 all:server client
 
 server:server.cpp common.h func.h constants.h server.h makefile
-	g++ -Wall -std=c++11 -O3 server.cpp -o server -lpthread -ggdb
+	g++ -Wall -std=c++11 -O3 server.cpp -o server -pthread -ggdb
 
 client:client.cpp common.h func.h constants.h makefile
-	g++ -Wall -std=c++11 client.cpp -o client -lpthread -ggdb
+	g++ -Wall -std=c++11 client.cpp -o client -pthread -ggdb
 
 clean:
 	rm server client

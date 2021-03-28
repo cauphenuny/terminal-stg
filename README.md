@@ -1,3 +1,6 @@
+* recently update
+  see **update.md**
+
 * install
   ```shell
   git clone https://github.com/ycpedef/socket-stg --depth=1
@@ -9,7 +12,7 @@
 * run  
   1. run `./server` in one terminal
   2. run `./client [server_ip]` in another terminal, example: `./client 172.45.33.101`
-  3. you are admin when you both run `./server`and `./client` without ip
+  3. tips: you are admin when you both run `./server`and `./client (without ip)` on same computer (but admin is useless so far)
 
 * instructions  
   forked from [this repository](https://github.com/wierton/socket-based-naive-game)
@@ -31,7 +34,7 @@
     |      *      | blood vial|
   5. operations in battle
     * w s a d can move around
-    * fire (8 directions):
+    * fire (8 directions, and h-j-k-l is same to vim):
         ```
         y k o
         h   l
@@ -43,5 +46,5 @@
     but your role will be changed from player into witness. If you
     want to return the last ui, you need to type `q`.
 
-* **recently update**
-  **see update.md**
+* recently update
+  see **update.md**

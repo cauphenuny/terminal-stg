@@ -126,7 +126,7 @@ void init_constants() {
     map_s[MAP_ITEM_NONE] = (char*)" ";
     map_s[MAP_ITEM_MAGAZINE] = (char*)"+";
     map_s[MAP_ITEM_MAGMA] = (char*)"X";
-    map_s[MAP_ITEM_GRASS] = (char*)"█";
+    map_s[MAP_ITEM_GRASS] = (char*)"\033[2;37m█\033[0m";
     map_s[MAP_ITEM_BLOOD_VIAL] = (char*)"*";
     map_s[MAP_ITEM_MY_BULLET] = (char*)".";
     map_s[MAP_ITEM_OTHER_BULLET] = (char*)".";

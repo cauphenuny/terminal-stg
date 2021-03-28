@@ -1142,7 +1142,7 @@ int serv_response_login_success(server_message_t* psm) {
     wlog("==> update user state to screen\n");
     display_user_state();
     wlog("server say \"%s\"\n", psm->msg);
-    strncpy(global_server_str, psm->msg, MSG_SIZE - 1);
+    sprintf(global_server_str, "%s, client \033[0;31m%s%s", psm->msg, version, color_s[0]);
     return 0;
 }
 
@@ -1599,6 +1599,9 @@ int main(int argc, char* argv[]) {
     }
     if (signal(SIGTRAP, terminate) == SIG_ERR) {
         wlog("failed to set signal sigtrap");
+    }
+    if (signal(SIGTERM, terminate) == SIG_ERR) {
+        wlog("failed to set signal sigkill");
     }
 
     flip_screen();
