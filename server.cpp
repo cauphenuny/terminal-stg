@@ -1564,7 +1564,7 @@ int server_start() {
 void terminate_process(int recved_signal) {
     for (int i = 0; i < USER_CNT; i++) {
         if (sessions[i].conn >= 0) {
-            log("send QUIT to user #%d %s\033[2m(%s)\033[0m", i, sessions[i].user_name, sessions[i].ip_addr);
+            log("send quit to user #%d %s\033[2m(%s)\033[0m", i, sessions[i].user_name, sessions[i].ip_addr);
             send_to_client(i, SERVER_STATUS_QUIT);
             log("close conn:%d", sessions[i].conn);
             close(sessions[i].conn);
