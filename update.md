@@ -1,7 +1,7 @@
 -----
 
 **v2.6.0**
-- add admin command `ban` (ban user by uid)
+- add admin command `ban` (ban user by name)
 - add admin command `energy` (set user energy)
 
 -----
