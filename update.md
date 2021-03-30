@@ -1,4 +1,10 @@
 -----
+
+**v2.6.0**
+- add admin command `ban` (ban user by uid)
+- add admin command `energy` (set user energy)
+
+-----
 **v2.5.9**
 - fixed bug that client may disconnect to server in battle.
 

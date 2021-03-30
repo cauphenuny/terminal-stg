@@ -22,4 +22,6 @@ static int OTHER_ITEM_LASTS_TIME = 1000;
 #define GLOBAL_SPEED 20
 #define BULLET_SPEED 2
 
+#define ADMIN_COMMAND_LEN 32
+
 #endif

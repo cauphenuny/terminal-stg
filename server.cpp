@@ -9,11 +9,13 @@
 #include <cstdarg>
 #include <csignal>
 #include <cstring>
+#include <cctype>
 #include <ctime>
 #include <cmath>
-#include <set>
+
 #include <vector>
 #include <list>
+#include <set>
 
 #include "constants.h"
 #include "server.h"
@@ -255,8 +257,8 @@ void user_join_battle(uint32_t bid, uint32_t uid) {
     int uy = (rand() & 0x7FFF) % BATTLE_H;
     battles[bid].users[uid].pos.x = ux;
     battles[bid].users[uid].pos.y = uy;
-    log("alloc position (%hhu, %hhu) for launcher #%d %s\033[2m(%s)\033[0m",
-        ux, uy, uid, sessions[uid].user_name, sessions[uid].ip_addr);
+    log("alloc position (%hhu, %hhu) for launcher #%d %s",
+        ux, uy, uid, sessions[uid].user_name);
 
     sessions[uid].state = USER_STATE_BATTLE;
 
@@ -970,7 +972,8 @@ int client_command_launch_battle(int uid) {
     } else {
         logi("launch battle %d for %s, invite %s", bid, sessions[uid].user_name, pcm->user_name);
         user_join_battle(bid, uid);
-        invite_friend_to_battle(bid, uid, pcm->user_name);
+        if (strcmp(pcm->user_name, ""))
+            invite_friend_to_battle(bid, uid, pcm->user_name);
         launch_battle(bid);
         send_to_client(uid, SERVER_RESPONSE_LAUNCH_BATTLE_SUCCESS);
     }
@@ -1023,9 +1026,9 @@ int client_command_send_message(int uid) {
     } else {
         int friend_id = find_uid_by_user_name(pcm->user_name);
         if (friend_id == -1 || friend_id == uid) {
-            logi("user %d:%s\033[2m(%s)\033[0m fails to speak to %s:\"%s\"", uid, sessions[uid].user_name, sessions[uid].ip_addr, pcm->user_name, pcm->message);
+            logi("user %d:%s\033[2m(%s)\033[0m fails to speak to %s:`%s`", uid, sessions[uid].user_name, sessions[uid].ip_addr, pcm->user_name, pcm->message);
         } else {
-            logi("uiser %d:%s\033[2m(%s)\033[0m speaks to %d:%s : \"%s\"", uid, sessions[uid].user_name, sessions[uid].ip_addr, friend_id, pcm->user_name, pcm->message);
+            logi("user %d:%s\033[2m(%s)\033[0m speaks to %d:%s : `%s`", uid, sessions[uid].user_name, sessions[uid].ip_addr, friend_id, pcm->user_name, pcm->message);
             wrap_send(sessions[friend_id].conn, &sm);
         }
     }
@@ -1054,7 +1057,8 @@ int client_command_create_ffa(int uid) {
         logi("launch battle #0 for ffa");
         battles[bid].is_alloced = true;
         user_join_battle(bid, uid);
-        invite_friend_to_battle(bid, uid, pcm->user_name);
+        if (strcmp(pcm->user_name, ""))
+            invite_friend_to_battle(bid, uid, pcm->user_name);
         launch_battle(bid);
         send_to_client(uid, SERVER_RESPONSE_LAUNCH_BATTLE_SUCCESS);
     }
@@ -1075,7 +1079,7 @@ int client_command_launch_ffa(int uid) {
             user_join_battle(bid, uid);
             logi("accept success");
         } else {
-            logi("user %s\033[2m(%s)\033[0m created ffa session #0", sessions[uid].user_name, sessions[uid].ip_addr);
+            logi("user %s created ffa session #0", sessions[uid].user_name);
             client_command_create_ffa(uid);
         }
     }
@@ -1131,14 +1135,16 @@ int client_command_quit(int uid) {
     int conn = sessions[uid].conn;
     if (sessions[uid].state == USER_STATE_BATTLE
         || sessions[uid].state == USER_STATE_WAIT_TO_BATTLE) {
-        log("user #%d %s\033[2m(%s)\033[0m tries to quit client was in battle", uid, sessions[uid].user_name, sessions[uid].ip_addr);
+        log("user #%d %s tries to quit client was in battle", uid, sessions[uid].user_name);
         user_quit_battle(sessions[uid].bid, uid);
     }
 
-    sessions[uid].conn = -1;
-    log("user #%d %s\033[2m(%s)\033[0m quit", uid, sessions[uid].user_name, sessions[uid].ip_addr);
-    sessions[uid].state = USER_STATE_UNUSED;
-    close(conn);
+    if (sessions[uid].conn >= 0) {
+        sessions[uid].conn = -1;
+        log("user #%d %s quit", uid, sessions[uid].user_name);
+        sessions[uid].state = USER_STATE_UNUSED;
+        close(conn);
+    }
     return -1;
 }
 
@@ -1301,18 +1307,34 @@ int client_command_fire_aoe_right(int uid) {
     return client_command_fire_aoe(uid, DIR_RIGHT);
 }
 
-int admin_ban_user(char* args) {
-    log("admin ban user '%s'", args);
-    int uid = atoi(args);
+int admin_set_energy(int argc, char** argv) {
+    int uid = find_uid_by_user_name(argv[1]), energy = atoi(argv[2]);
+    log("admin set user #%d's energy", uid);
+    if (uid < 0 || uid >= USER_CNT || sessions[uid].conn < 0 || energy < 0) {
+        return -1;
+    }
+    log("admin set user #%d %s's energy to %d", uid, sessions[uid].user_name, energy);
+    battles[sessions[uid].bid].users[uid].energy = energy;
+    for (int i = 0; i < USER_CNT; i++) {
+        if (sessions[i].conn >= 0) {
+            say_to_client(i, sformat("admin set user #%d %s's energy to %d", uid, sessions[uid].user_name, energy));
+        }
+    }
+    return 0;
+}
+
+int admin_ban_user(int argc, char** argv) {
+    int uid = find_uid_by_user_name(argv[1]);
+    log("admin ban user #%d", uid);
     if (uid < 0 || uid >= USER_CNT) {
-        return 0;
+        return -1;
     }
     if (sessions[uid].conn >= 0) {
         log("admin banned user #%d %s\033[2m(%s)\033[0m", uid, sessions[uid].user_name, sessions[uid].ip_addr);
-        send_to_client(uid, SERVER_STATUS_QUIT);
-        log("close conn:%d", sessions[uid].conn);
-        close(sessions[uid].conn);
-        sessions[uid].conn = -1;
+        send_to_client(
+            uid, SERVER_STATUS_QUIT, 
+            (char*)" (you were banned by admin)");
+        client_command_quit(uid);
         for (int i = 0; i < USER_CNT; i++) {
             if (sessions[i].conn >= 0) {
                 say_to_client(i, sformat("admin banned user #%d %s\033[2m(%s)\033[0m", uid, sessions[uid].user_name, sessions[uid].ip_addr));
@@ -1324,10 +1346,10 @@ int admin_ban_user(char* args) {
 
 static struct {
     const char* cmd;
-    int (*func)(char* args);
+    int (*func)(int argc, char** argv);
 } admin_handler[] = {
     {"ban", admin_ban_user},
-    //{"bullets", admin_set_bullets},
+    {"energy", admin_set_energy},
 };
 
 #define NR_HANDLER ((int)sizeof(admin_handler) / (int)sizeof(admin_handler[0]))
@@ -1338,17 +1360,31 @@ int client_command_admin_control(int uid) {
         return 0;
     }
     client_message_t* pcm = &sessions[uid].cm;
-    char* command = (char*)pcm->message;
-
-    strtok(command, " \t");
-    char* args = strtok(NULL, " \t");
-
+    char *buff = (char*)pcm->message;
+    log("analysis command `%s`", buff);
+    char *go = buff, *argv[ADMIN_COMMAND_LEN];
+    int argc = 0;
+    while (*go != 0) {
+        if (!isspace(*go)) {
+            argv[argc] = go;
+            argc++;
+            char c = (*go == '"') ? '"' : ' ';
+            while ((*go != 0) && (*go != c)) go++;
+            if (*go == 0) break;
+            *go = 0;
+        }
+        go++;
+    }
+    argv[argc] = NULL;
     for (int i = 0; i < NR_HANDLER; i++) {
-        if (strcmp(command, admin_handler[i].cmd) == 0) {
-            admin_handler[i].func(args);
+        if (strcmp(argv[0], admin_handler[i].cmd) == 0) {
+            if (admin_handler[i].func(argc, argv)) {
+                say_to_client(uid, (char*)"invalid command!");
+            }
             return 0;
         }
     }
+    say_to_client(uid, (char*)"invalid command!");
     return 0;
 }
 
@@ -1360,7 +1396,7 @@ int client_message_fatal(int uid) {
             log("send FATAL to user #%d %s\033[2m(%s)\033[0m", i, sessions[i].user_name, sessions[i].ip_addr);
         }
     }
-    terminate_process(SIGINT);
+    terminate_process(0);
     return 0;
 }
 
@@ -1436,6 +1472,7 @@ void wrap_send(int conn, server_message_t* psm) {
 
 void send_to_client(int uid, int message) {
     int conn = sessions[uid].conn;
+    if (conn < 0) return;
     server_message_t sm;
     memset(&sm, 0, sizeof(server_message_t));
     sm.response = message;
@@ -1444,6 +1481,7 @@ void send_to_client(int uid, int message) {
 
 void send_to_client(int uid, int message, char* str) {
     int conn = sessions[uid].conn;
+    if (conn < 0) return;
     server_message_t sm;
     memset(&sm, 0, sizeof(server_message_t));
     sm.response = message;
@@ -1452,8 +1490,9 @@ void send_to_client(int uid, int message, char* str) {
 }
 
 void say_to_client(int uid, char *message) {
-    log("send message \"%s\" to %d", message, uid);
+    log("send message `%s` to %d", message, uid);
     int conn = sessions[uid].conn;
+    if (conn < 0) return;
     server_message_t sm;
     memset(&sm, 0, sizeof(server_message_t));
     sm.message = SERVER_MESSAGE;
@@ -1463,6 +1502,7 @@ void say_to_client(int uid, char *message) {
 
 void send_to_client_with_username(int uid, int message, char* user_name) {
     int conn = sessions[uid].conn;
+    if (conn < 0) return;
     server_message_t sm;
     memset(&sm, 0, sizeof(server_message_t));
     sm.response = message;
@@ -1505,13 +1545,7 @@ void* session_start(void* args) {
         if (pcm->command >= CLIENT_COMMAND_END)
             continue;
 
-        //uint64_t t[2];
-        //t[0] = myclock();
         int ret_code = handler[pcm->command](uid);
-        //t[1] = myclock();
-        //sum_delay_time += t[1] - t[0];
-        //if (t[1] - t[0] >= 5) logw("current delay %lums", t[1] - t[0]);
-        //log("state of user %s: %d", sessions[uid].user_name, sessions[uid].state);
         if (ret_code < 0) {
             log("close session #%d", uid);
             break;
@@ -1561,11 +1595,17 @@ int server_start() {
     return sockfd;
 }
 
-void terminate_process(int recved_signal) {
+void terminate_process(int signum) {
     for (int i = 0; i < USER_CNT; i++) {
         if (sessions[i].conn >= 0) {
             log("send quit to user #%d %s\033[2m(%s)\033[0m", i, sessions[i].user_name, sessions[i].ip_addr);
-            send_to_client(i, SERVER_STATUS_QUIT);
+            if (signum) {
+                send_to_client(
+                    i, SERVER_STATUS_QUIT, 
+                    sformat(" (runtime error: %s)", signal_name_s[signum]));
+            } else {
+                send_to_client(i, SERVER_STATUS_QUIT);
+            }
             log("close conn:%d", sessions[i].conn);
             close(sessions[i].conn);
             sessions[i].conn = -1;
@@ -1583,19 +1623,13 @@ void terminate_process(int recved_signal) {
         pthread_mutex_destroy(&items_lock[i]);
     }
 
-    log("exit(%d)", recved_signal);
-    exit(recved_signal);
+    log("exit(%d)", signum);
+    exit(signum);
 }
 
-void terminate_entrance(int recved_signal) {
-    loge("received signal %s, terminate.", signal_name_s[recved_signal]);
-    terminate_process(recved_signal);
-}
-
-void* speed_monitor(void* args) {
-    while (1) {
-
-    }
+void terminate_entrance(int signum) {
+    loge("received signal %s, terminate.", signal_name_s[signum]);
+    terminate_process(signum == SIGINT ? 0 : signum);
 }
 
 int main(int argc, char* argv[]) {
@@ -1633,10 +1667,6 @@ int main(int argc, char* argv[]) {
 
     server_fd = server_start();
     load_user_list();
-
-    if (pthread_create(&thread, NULL, speed_monitor, NULL) != 0) {
-        loge("failed to create speed_monitor thread.");
-    }
 
     for (int i = 0; i < USER_CNT; i++)
         sessions[i].conn = -1;

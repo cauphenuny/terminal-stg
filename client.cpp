@@ -702,7 +702,7 @@ int cmd_admin(char* args) {
     client_message_t cm;
     cm.command = CLIENT_COMMAND_ADMIN_CONTROL;
     strncpy(cm.user_name, user_name, USERNAME_SIZE - 1);
-    strncpy(cm.user_name, args, USERNAME_SIZE - 1);
+    strncpy(cm.message, args, MSG_SIZE - 1);
     wrap_send(&cm);
     return 0;
 }
@@ -762,11 +762,7 @@ void read_and_execute_command() {
     wlog("accept command: '%s'\n", command);
     //char* args = (char*)malloc(MSG_SIZE);
     strtok(command, " \t");
-    char* args = strtok(NULL, " \t");
-    //while (arg != NULL) {
-    //    strcat(args, arg);
-    //    arg = strtok(NULL, " \t");
-    //}
+    char* args = strtok(NULL, "\0");
 
     for (int i = 0; i < NR_HANDLER; i++) {
         if (strcmp(command, command_handler[i].cmd) == 0) {
@@ -1097,7 +1093,7 @@ void start_ui() {
 int serv_quit(server_message_t* psm) {
     wlog("call message handler %s\n", __func__);
     flip_screen();
-    puts("forced terminated by server.\033[?25h" NONE);
+    printf("forced terminated by server.%s\n\033[?25h" NONE, psm->msg);
     resume_and_exit(1);
     return 0;
 }
@@ -1105,7 +1101,7 @@ int serv_quit(server_message_t* psm) {
 int serv_fatal(server_message_t* psm) {
     wlog("call message handler %s\n", __func__);
     flip_screen();
-    puts("forced terminated by a user.\033[?25h" NONE);
+    printf("forced terminated by client.%s\033[?25h" NONE, psm->msg);
     resume_and_exit(3);
     return 0;
 }
