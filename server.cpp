@@ -1327,6 +1327,7 @@ int admin_ban_user(int argc, char** argv) {
     int uid = find_uid_by_user_name(argv[1]);
     log("admin ban user #%d", uid);
     if (uid < 0 || uid >= USER_CNT) {
+        logi("fail");
         return -1;
     }
     if (sessions[uid].conn >= 0) {
@@ -1490,9 +1491,9 @@ void send_to_client(int uid, int message, char* str) {
 }
 
 void say_to_client(int uid, char *message) {
-    log("send message `%s` to %d", message, uid);
+    log("say `%s` to user #%d %s", message, uid, sessions[uid].user_name);
     int conn = sessions[uid].conn;
-    if (conn < 0) return;
+    if (conn < 0) { logi("fail"); return; }
     server_message_t sm;
     memset(&sm, 0, sizeof(server_message_t));
     sm.message = SERVER_MESSAGE;

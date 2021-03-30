@@ -43,6 +43,7 @@
 -----------
 
 **v2.0.0**  
+- switch language to cpp
 - changed server message transporting method,   
 - changed map generating method, (client ==> server) made connect faster.
 - get every player a unique color.  
@@ -50,7 +51,7 @@
   
 --------------
 
-**v1.7.0**  
+**v1.7.0 [released]**  
 - added time count-down for every item.  
 - made bullets could move back when it hits the wall.  
 - created FFA and ranklist buttom.  
@@ -71,7 +72,7 @@
 - set H, J, K, L  
   
 --------------
-**v1.4.1**  
+**v1.4.1 [released]**  
 - fix backspace  
   
 --------------

@@ -12,7 +12,7 @@
 * run  
   1. run `./server` in one terminal
   2. run `./client [server_ip]` in another terminal, example: `./client 172.45.33.101`
-  3. tips: you are admin when you both run `./server`and `./client (without ip)` on same computer (but admin is useless so far)
+  3. tips: you are admin when you both run `./server`and `./client` or `./client 127.0.0.1` on same computer
 
 * instructions  
   forked from [this repository](https://github.com/wierton/socket-based-naive-game)
