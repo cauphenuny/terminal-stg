@@ -1,12 +1,16 @@
 * recently update  
   see **update.md**
 
-* install
+* download  
+  **[releases](https://github.com/ycpedef/socket-stg/releases/)** or  
   ```shell
   git clone https://github.com/ycpedef/socket-stg --depth=1
   # or
   # git clone https://gitee.com/yuanchenpu/socket-stg --depth=1
   cd socket-stg
+  ```
+* install (just input `make` in your terminal)  
+  ```shell
   make
   ```
 * run  
@@ -48,3 +52,4 @@
 
 * recently update
   see **update.md**
+
