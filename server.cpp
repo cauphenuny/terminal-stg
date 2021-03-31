@@ -178,6 +178,7 @@ void save_user_list() {
         fprintf(userlist, "%s\n", registered_user_list[i].password);
     }
     log("saved %d users to " REGISTERED_USER_FILE ".", user_list_size);
+    fclose(userlist);
 }
 
 void save_user(int i) {
@@ -185,6 +186,7 @@ void save_user(int i) {
     fprintf(userlist, "%s\n", registered_user_list[i].user_name);
     fprintf(userlist, "%s\n", registered_user_list[i].password);
     log("saved users %s to " REGISTERED_USER_FILE ".", registered_user_list[i].user_name);
+    fclose(userlist);
 }
 
 int query_session_built(uint32_t uid) {
