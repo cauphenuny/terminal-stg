@@ -519,12 +519,12 @@ char* readline() {
         fflush(stdout);
     while ((ch = fgetc(stdin)) != '\n') {
         switch (ch) {
-            case '\033': {
-                ch = fgetc(stdin);
-                ch = fgetc(stdin);
-                assert('A' <= ch && ch <= 'D');
-                break;
-            }
+            //case '\033': {
+            //    ch = fgetc(stdin);
+            //    ch = fgetc(stdin);
+            //    assert('A' <= ch && ch <= 'D');
+            //    break;
+            //}
             case 0x7f:
             case 0x08: {
                 if (line_ptr == 0) break;
@@ -1101,7 +1101,7 @@ int serv_quit(server_message_t* psm) {
 int serv_fatal(server_message_t* psm) {
     wlog("call message handler %s\n", __func__);
     flip_screen();
-    printf("forced terminated by client.%s\033[?25h" NONE, psm->msg);
+    printf("forced terminated by client.\033[?25h" NONE);
     resume_and_exit(3);
     return 0;
 }

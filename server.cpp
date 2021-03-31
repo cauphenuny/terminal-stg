@@ -88,7 +88,7 @@ class item_t { public:
     int kind;
     pos_t pos;
     item_t(const item_t &it) : id(it.id),
-                               dir(it.dir), 
+                               dir(it.dir),
                                owner(it.owner),
                                time(it.time),
                                count(it.count),
@@ -658,7 +658,7 @@ void inform_all_user_battle_player(int bid) {
     server_message_t sm;
     sm.message = SERVER_MESSAGE_BATTLE_PLAYER;
     for (int i = 0; i < USER_CNT; i++) {
-        if (battles[bid].users[i].battle_state == BATTLE_STATE_LIVE && 
+        if (battles[bid].users[i].battle_state == BATTLE_STATE_LIVE &&
             battles[bid].users[i].life > 0) {
             strncpy(sm.users[i].name, sessions[i].user_name, USERNAME_SIZE - 1);
             sm.users[i].namecolor = i % color_s_size + 1;
@@ -846,8 +846,8 @@ int client_command_user_login(int uid) {
         log("user %s login success", user_name);
         sessions[uid].state = USER_STATE_LOGIN;
         send_to_client(
-            uid, 
-            SERVER_RESPONSE_LOGIN_SUCCESS, 
+            uid,
+            SERVER_RESPONSE_LOGIN_SUCCESS,
             sformat("Welcome to multiplayer shooting game! server \033[0;32m%s%s", version, color_s[0]));
         strncpy(sessions[uid].user_name, user_name, USERNAME_SIZE - 1);
         inform_friends(uid, SERVER_MESSAGE_FRIEND_LOGIN);
@@ -1308,6 +1308,7 @@ int client_command_fire_aoe_right(int uid) {
 }
 
 int admin_set_energy(int argc, char** argv) {
+    if (argc < 3) return -1;
     int uid = find_uid_by_user_name(argv[1]), energy = atoi(argv[2]);
     log("admin set user #%d's energy", uid);
     if (uid < 0 || uid >= USER_CNT || sessions[uid].conn < 0 || energy < 0) {
@@ -1324,6 +1325,7 @@ int admin_set_energy(int argc, char** argv) {
 }
 
 int admin_ban_user(int argc, char** argv) {
+    if (argc < 2) return -1;
     int uid = find_uid_by_user_name(argv[1]);
     log("admin ban user #%d", uid);
     if (uid < 0 || uid >= USER_CNT) {
@@ -1333,7 +1335,7 @@ int admin_ban_user(int argc, char** argv) {
     if (sessions[uid].conn >= 0) {
         log("admin banned user #%d %s\033[2m(%s)\033[0m", uid, sessions[uid].user_name, sessions[uid].ip_addr);
         send_to_client(
-            uid, SERVER_STATUS_QUIT, 
+            uid, SERVER_STATUS_QUIT,
             (char*)" (you were banned by admin)");
         client_command_quit(uid);
         for (int i = 0; i < USER_CNT; i++) {
@@ -1602,7 +1604,7 @@ void terminate_process(int signum) {
             log("send quit to user #%d %s\033[2m(%s)\033[0m", i, sessions[i].user_name, sessions[i].ip_addr);
             if (signum) {
                 send_to_client(
-                    i, SERVER_STATUS_QUIT, 
+                    i, SERVER_STATUS_QUIT,
                     sformat(" (runtime error: %s)", signal_name_s[signum]));
             } else {
                 send_to_client(i, SERVER_STATUS_QUIT);
