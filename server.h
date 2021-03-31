@@ -7,7 +7,7 @@ static int INIT_BULLETS = 12;
 static int MAX_BULLETS = 480;
 static int BULLETS_PER_MAGAZINE = 12;
 
-static int INIT_LIFE = 10;
+static int INIT_LIFE = 5;
 static int MAX_LIFE = 20;
 static int LIFE_PER_VIAL = 5;
 

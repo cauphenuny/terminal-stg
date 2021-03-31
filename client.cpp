@@ -1416,8 +1416,8 @@ void draw_players(server_message_t* psm) {
         if (psm->users[i].namecolor != 0) {
             set_cursor(BATTLE_W, ++p);
             printf("%s%s%s(%d)", color_s[psm->users[i].namecolor], psm->users[i].name, color_s[0], psm->users[i].life);
-            set_cursor(BATTLE_W + 9, p);
-            printf("%3d★  %d/%d", psm->users[i].score, psm->users[i].kill, psm->users[i].death);
+            set_cursor(BATTLE_W + 12, p);
+            printf("%2d★ %d/%d", psm->users[i].score, psm->users[i].kill, psm->users[i].death);
         }
     }
     fflush(stdout);
