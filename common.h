@@ -4,7 +4,7 @@
 #pragma GCC diagnostic ignored "-Wstringop-truncation"
 #pragma GCC diagnostic ignored "-Wunused-result"
 
-const char* version = (char*)"v2.6.2";
+const char* version = (char*)"v2.6.3";
 
 #include <cstdio>
 #include <cstdlib>
@@ -170,6 +170,10 @@ enum {
 
 enum {
     SERVER_SAY_NOTHING,
+
+    SERVER_STATUS_QUIT,
+    SERVER_STATUS_FATAL,
+
     SERVER_RESPONSE_REGISTER_SUCCESS,
     SERVER_RESPONSE_REGISTER_FAIL,
     SERVER_RESPONSE_YOU_HAVE_REGISTERED,
@@ -209,9 +213,6 @@ enum {
     SERVER_MESSAGE_YOU_GOT_BLOOD_VIAL,
     SERVER_MESSAGE_YOU_GOT_MAGAZINE,
     SERVER_MESSAGE_YOUR_MAGAZINE_IS_EMPTY,
-
-    SERVER_STATUS_QUIT,
-    SERVER_STATUS_FATAL,
 };
 
 /* some special characters(terminal graph):

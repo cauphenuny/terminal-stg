@@ -1378,13 +1378,15 @@ int client_command_admin_control(int uid) {
         }
         go++;
     }
-    argv[argc] = NULL;
-    for (int i = 0; i < NR_HANDLER; i++) {
-        if (strcmp(argv[0], admin_handler[i].cmd) == 0) {
-            if (admin_handler[i].func(argc, argv)) {
-                say_to_client(uid, (char*)"invalid command!");
+    if (argc) {
+        argv[argc] = NULL;
+        for (int i = 0; i < NR_HANDLER; i++) {
+            if (strcmp(argv[0], admin_handler[i].cmd) == 0) {
+                if (admin_handler[i].func(argc, argv)) {
+                    say_to_client(uid, (char*)"invalid command!");
+                }
+                return 0;
             }
-            return 0;
         }
     }
     say_to_client(uid, (char*)"invalid command!");

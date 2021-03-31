@@ -5,7 +5,7 @@
 - add admin command `energy` (set user energy)
 
 -----
-**v2.5.9**
+**v2.5.9 [released]**
 - fixed bug that client may disconnect to server in battle.
 
 -----
@@ -22,7 +22,7 @@
 - added scores (like 50★ ) on sidebar, it will change when you kill other or be killed.
 -------
 
-**v2.4.0**
+**v2.4.0 [released]**
 
 - finally, I added Free-For-All mode.
 
@@ -32,17 +32,17 @@
 - changed item container to std::list, made server even more faster.
 
 -----------
-**v2.2.0**
+**v2.2.0 [released]**
 
 - add players kill-death info on the right sidebar.
 -------
 
-**v2.1.0**
+**v2.1.0 [released]**
 - add players info on the right sidebar.  
 
 -----------
 
-**v2.0.0**  
+**v2.0.0 [released]**  
 - switch language to cpp
 - changed server message transporting method,   
 - changed map generating method, (client ==> server) made connect faster.
