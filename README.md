@@ -45,6 +45,7 @@
         n j .
         ```
     * K J H L can fire AOE
+    * m can put landmine
   6. quit the battle
     * note that even you die, you won't be quited from the battle
     but your role will be changed from player into witness. If you
