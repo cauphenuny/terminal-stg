@@ -13,7 +13,7 @@ static int LIFE_PER_VIAL = 5;
 
 #define INIT_GRASS 5
 
-#define MAGMA_INIT_TIMES 10
+#define MAGMA_INIT_TIMES 3
 #define MAX_OTHER 20
 
 static int BULLETS_LASTS_TIME = 100;

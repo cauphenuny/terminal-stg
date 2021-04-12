@@ -4,7 +4,7 @@
 #pragma GCC diagnostic ignored "-Wstringop-truncation"
 #pragma GCC diagnostic ignored "-Wunused-result"
 
-const char* version = (char*)"v2.6.3";
+const char* version = (char*)"v2.7.0";
 
 #include <cstdio>
 #include <cstdlib>
@@ -152,6 +152,7 @@ enum {
     CLIENT_COMMAND_MOVE_DOWN,
     CLIENT_COMMAND_MOVE_LEFT,
     CLIENT_COMMAND_MOVE_RIGHT,
+    CLIENT_COMMAND_PUT_LANDMINE,
     CLIENT_COMMAND_FIRE_UP,
     CLIENT_COMMAND_FIRE_DOWN,
     CLIENT_COMMAND_FIRE_LEFT,

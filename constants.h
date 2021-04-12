@@ -16,6 +16,10 @@
 #define MSG_SIZE 96
 #define USER_CNT   14
 
+#define LANDMINE_COST 12
+
+#define INF 1e9
+
 #define PASSWORD_SIZE USERNAME_SIZE
 
 enum {
@@ -26,6 +30,7 @@ enum {
     ITEM_BLOOD_VIAL,
     ITEM_END,
     ITEM_BULLET,
+    ITEM_LANDMINE,
     ITEM_SIZE, // make it on the end!
 };
 
@@ -39,6 +44,7 @@ enum {
     MAP_ITEM_USER,
     MAP_ITEM_OTHER_USER,
     MAP_ITEM_GRASS,
+    MAP_ITEM_LANDMINE,
     MAP_ITEM_END,
 };
 
@@ -113,6 +119,7 @@ void init_constants() {
     item_s[ITEM_BLOOD_VIAL] = (char*)"blood_vial";
     item_s[ITEM_END] = (char*)"end";
     item_s[ITEM_BULLET] = (char*)"bullet";
+    item_s[ITEM_LANDMINE] = (char*)"landmine";
 
     dir_s[DIR_UP] = (char*)"up";
     dir_s[DIR_DOWN] = (char*)"down";
@@ -131,6 +138,7 @@ void init_constants() {
     map_s[MAP_ITEM_MY_BULLET] = (char*)".";
     map_s[MAP_ITEM_OTHER_BULLET] = (char*)".";
     map_s[MAP_ITEM_USER] = (char*)"A";
+    map_s[MAP_ITEM_LANDMINE] = (char*)"o";
     map_s[MAP_ITEM_END] = (char*)" ";
 
     item_to_map[ITEM_NONE] = MAP_ITEM_NONE;
@@ -138,6 +146,7 @@ void init_constants() {
     item_to_map[ITEM_MAGMA] = MAP_ITEM_MAGMA;
     item_to_map[ITEM_GRASS] = MAP_ITEM_GRASS;
     item_to_map[ITEM_BLOOD_VIAL] = MAP_ITEM_BLOOD_VIAL;
+    item_to_map[ITEM_LANDMINE] = MAP_ITEM_LANDMINE;
     item_to_map[ITEM_END] = MAP_ITEM_END;
 
     signal_name_s[SIGHUP   ] = (char*)"SIGHUP";

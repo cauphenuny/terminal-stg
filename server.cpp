@@ -530,6 +530,17 @@ void check_user_status(int uid) {
                     }
                     break;
                 }
+                case ITEM_LANDMINE: {
+					if (it->owner != uid) {
+						it->time = battles[bid].global_time;
+						forced_generate_items(bid, ix, iy, ITEM_MAGMA, 7);
+						forced_generate_items(bid, ix - 1, iy, ITEM_MAGMA, 7);
+						forced_generate_items(bid, ix + 1, iy, ITEM_MAGMA, 7);
+						forced_generate_items(bid, ix, iy - 1, ITEM_MAGMA, 7);
+						forced_generate_items(bid, ix, iy + 1, ITEM_MAGMA, 7);
+					}
+                    break;
+                }
             }
         }
     }
@@ -638,6 +649,10 @@ void render_map_for_user(int uid, server_message_t* psm) {
                 }
                 break;
             }
+            case ITEM_LANDMINE: {
+                if (it.owner != uid) break;
+                map[y][x] = max(map[y][x], item_to_map[ITEM_LANDMINE]);
+            }
             default: {
                 cur = item_to_map[it.kind];
                 map[y][x] = max(map[y][x], cur);
@@ -722,7 +737,7 @@ void inform_all_user_battle_state(int bid) {
 void* battle_ruler(void* args) {
     int bid = (int)(uintptr_t)args;
     log("battle ruler for battle #%d", bid);
-    // FIXME: battle re-alloced before exiting loop
+    // FIXME: battle re-alloced before exiting loop 
     for (int i = 0; i < INIT_GRASS; i++) {
         forced_generate_items(bid,
                               (rand() & 0x7FFF) % BATTLE_W,
@@ -1193,12 +1208,38 @@ int client_command_move_right(int uid) {
     }
     return 0;
 }
+
+int client_command_put_landmine(int uid) {
+    int bid = sessions[uid].bid;
+
+    if (battles[bid].users[uid].energy < LANDMINE_COST) {
+        send_to_client(uid, SERVER_MESSAGE_YOUR_MAGAZINE_IS_EMPTY);
+        return 0;
+    }
+    int x = battles[bid].users[uid].pos.x;
+    int y = battles[bid].users[uid].pos.y;
+    if (x < 0 || x >= BATTLE_W) return 1;
+    if (y < 0 || y >= BATTLE_H) return 1;
+    log("user #%d %s\033[2m(%s)\033[0m put landmine", uid, sessions[uid].user_name, sessions[uid].ip_addr);
+    item_t new_item;
+    new_item.id = ++battles[bid].item_count;
+    new_item.kind = ITEM_LANDMINE;
+    new_item.owner = uid;
+    new_item.pos.x = x;
+    new_item.pos.y = y;
+    new_item.time = battles[bid].global_time + INF;
+    battles[bid].users[uid].energy -= LANDMINE_COST;
+    battles[bid].items.push_back(new_item);
+    //log("current item size: %ld", battles[bid].items.size());
+    return 0;
+}
+
 int client_command_fire(int uid, int delta_x, int delta_y, int dir) {
     int bid = sessions[uid].bid;
 
     if (battles[bid].users[uid].energy <= 0) {
         send_to_client(uid, SERVER_MESSAGE_YOUR_MAGAZINE_IS_EMPTY);
-        return -1;
+        return 0;
     }
     int x = battles[bid].users[uid].pos.x + delta_x;
     int y = battles[bid].users[uid].pos.y + delta_y;
@@ -1433,6 +1474,8 @@ void init_handler() {
     handler[CLIENT_COMMAND_MOVE_DOWN] = client_command_move_down,
     handler[CLIENT_COMMAND_MOVE_LEFT] = client_command_move_left,
     handler[CLIENT_COMMAND_MOVE_RIGHT] = client_command_move_right,
+
+    handler[CLIENT_COMMAND_PUT_LANDMINE] = client_command_put_landmine,
 
     handler[CLIENT_COMMAND_FIRE_UP] = client_command_fire_up,
     handler[CLIENT_COMMAND_FIRE_DOWN] = client_command_fire_down,
