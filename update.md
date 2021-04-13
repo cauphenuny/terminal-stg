@@ -1,8 +1,9 @@
 -----
 **v2.7.2**
-- add admin command `hp` (set user hp by name)
+- add admin command `hp` (set user hp by name)  
   usage: `admin hp <username> <new hp>`
-- add admin command `setadmin` (set user to be admin or not)
+
+- add admin command `setadmin` (set user to be admin or not)  
   usage: `admin setadmin <username> <0/1>`
 
 -----
@@ -12,9 +13,10 @@
 -----
 
 **v2.6.0**
-- add admin command `ban` (ban user by name)
+- add admin command `ban` (ban user by name)  
   usage: `admin ban <username>`
-- add admin command `energy` (set user energy by name)
+
+- add admin command `energy` (set user energy by name)  
   usage: `admin energy <username> <new energy>`
 
 -----
