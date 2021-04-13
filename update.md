@@ -1,12 +1,21 @@
 -----
+**v2.7.2**
+- add admin command `hp` (set user hp by name)
+  usage: `admin hp <username> <new hp>`
+- add admin command `setadmin` (set user to be admin or not)
+  usage: `admin setadmin <username> <0/1>`
+
+-----
 **v2.7.0**
-- add 1 to put landmine
+- add `1` to put landmine
 
 -----
 
 **v2.6.0**
 - add admin command `ban` (ban user by name)
-- add admin command `energy` (set user energy)
+  usage: `admin ban <username>`
+- add admin command `energy` (set user energy by name)
+  usage: `admin energy <username> <new energy>`
 
 -----
 **v2.5.9 [released]**

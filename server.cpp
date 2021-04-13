@@ -358,6 +358,8 @@ void inform_friends(int uid, int message) {
 
 void forced_generate_items(int bid, int x, int y, int kind, int count) {
     //if (battles[bid].num_of_other >= MAX_OTHER) return;
+    if (x < 0 || x >= BATTLE_W) return;
+    if (y < 0 || y >= BATTLE_H) return;
     battles[bid].item_count++;
     item_t new_item;
     new_item.id = battles[bid].item_count;
@@ -1350,6 +1352,27 @@ int client_command_fire_aoe_right(int uid) {
     return client_command_fire_aoe(uid, DIR_RIGHT);
 }
 
+int admin_set_admin(int argc, char** argv) {
+    if (argc < 3) return -1;
+    int uid = find_uid_by_user_name(argv[1]), status = atoi(argv[2]);
+    if (uid < 0 || uid >= USER_CNT || sessions[uid].conn < 0) {
+        return -1;
+    }
+    if (status) log("admin set user #%d admin", uid);
+    else log("admin set user #%d non-admin", uid);
+    sessions[uid].is_admin = status;
+    for (int i = 0; i < USER_CNT; i++) {
+        if (sessions[i].conn >= 0) {
+            if (status) {
+                say_to_client(i, sformat("admin set user #%d %s to admin", uid, sessions[uid].user_name));
+            } else {
+                say_to_client(i, sformat("admin set user #%d %s to non-admin", uid, sessions[uid].user_name));
+            }
+        }
+    }
+    return 0;
+}
+
 int admin_set_energy(int argc, char** argv) {
     if (argc < 3) return -1;
     int uid = find_uid_by_user_name(argv[1]), energy = atoi(argv[2]);
@@ -1362,6 +1385,22 @@ int admin_set_energy(int argc, char** argv) {
     for (int i = 0; i < USER_CNT; i++) {
         if (sessions[i].conn >= 0) {
             say_to_client(i, sformat("admin set user #%d %s's energy to %d", uid, sessions[uid].user_name, energy));
+        }
+    }
+    return 0;
+}
+
+int admin_set_hp(int argc, char** argv) {
+    if (argc < 3) return -1;
+    int uid = find_uid_by_user_name(argv[1]), hp = atoi(argv[2]);
+    if (uid < 0 || uid >= USER_CNT || sessions[uid].conn < 0 || hp < 0) {
+        return -1;
+    }
+    log("admin set user #%d %s's hp to %d", uid, sessions[uid].user_name, hp);
+    battles[sessions[uid].bid].users[uid].life = hp;
+    for (int i = 0; i < USER_CNT; i++) {
+        if (sessions[i].conn >= 0) {
+            say_to_client(i, sformat("admin set user #%d %s's hp to %d", uid, sessions[uid].user_name, hp));
         }
     }
     return 0;
@@ -1395,7 +1434,10 @@ static struct {
     int (*func)(int argc, char** argv);
 } admin_handler[] = {
     {"ban", admin_ban_user},
+    {"eng", admin_set_energy},
     {"energy", admin_set_energy},
+    {"hp", admin_set_hp},
+    {"setadmin", admin_set_admin},
 };
 
 #define NR_HANDLER ((int)sizeof(admin_handler) / (int)sizeof(admin_handler[0]))
