@@ -1,4 +1,8 @@
 -----
+**v2.7.0**
+- add 1 to put landmine
+
+-----
 
 **v2.6.0**
 - add admin command `ban` (ban user by name)
