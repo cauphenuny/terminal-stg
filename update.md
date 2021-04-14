@@ -1,4 +1,13 @@
 -----
+**v2.8.0**
+- add ` `(space) for melee.
+
+-----
+**v2.7.4**
+- add admin command `pos` (set user position by name)  
+  usage: `admin pos <username> <new x> <new y>`
+
+-----
 **v2.7.2**
 - add admin command `hp` (set user hp by name)  
   usage: `admin hp <username> <new hp>`

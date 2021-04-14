@@ -37,15 +37,16 @@
     |      +      |  magazine |
     |      *      | blood vial|
   5. operations in battle
-    * `w` `s` `a` `d` can move around
+    * use `w` `s` `a` `d` for moving around
     * fire (8 directions, and h-j-k-l is same to vim):
         ```
         y k o
         h   l
         n j .
         ```
-    * `K` `J` `H` `L` can fire AOE
-    * `1` can put landmine
+    * use `K` `J` `H` `L` for fire AOE
+    * use `1` for putting landmine
+    * use ` (space)` for melee
   6. quit the battle
     * note that even you die, you won't be quited from the battle
     but your role will be changed from player into witness. If you

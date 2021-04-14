@@ -934,6 +934,7 @@ void run_battle() {
             case 'H': send_command(CLIENT_COMMAND_FIRE_AOE_LEFT); break;
             case 'L': send_command(CLIENT_COMMAND_FIRE_AOE_RIGHT); break;
             case '1': send_command(CLIENT_COMMAND_PUT_LANDMINE); break;
+            case ' ': send_command(CLIENT_COMMAND_MELEE); break;
         }
     }
 
@@ -1622,6 +1623,8 @@ void init_local_constants() {
 
     server_message_s[SERVER_SAY_NOTHING] = (char*)"SERVER_SAY_NOTHING";
     server_message_s[SERVER_RESPONSE_LOGIN_SUCCESS] = (char*)"SERVER_RESPONSE_LOGIN_SUCCESS";
+    server_message_s[SERVER_RESPONSE_REGISTER_SUCCESS] = (char*)"SERVER_RESPONSE_REGISTER_SUCCESS";
+    server_message_s[SERVER_RESPONSE_REGISTER_FAIL] = (char*)"SERVER_RESPONSE_REGISTER_FAIL";
     server_message_s[SERVER_RESPONSE_YOU_HAVE_LOGINED] = (char*)"SERVER_RESPONSE_YOU_HAVE_LOGINED";
     server_message_s[SERVER_RESPONSE_YOU_HAVE_NOT_LOGIN] = (char*)"SERVER_RESPONSE_YOU_HAVE_NOT_LOGIN";
     server_message_s[SERVER_RESPONSE_LOGIN_FAIL_UNREGISTERED_USERID] = (char*)"SERVER_RESPONSE_LOGIN_FAIL_UNREGISTERED_USERID";
@@ -1635,6 +1638,9 @@ void init_local_constants() {
     server_message_s[SERVER_RESPONSE_YOURE_NOT_IN_BATTLE] = (char*)"SERVER_RESPONSE_YOURE_NOT_IN_BATTLE";
     server_message_s[SERVER_RESPONSE_YOURE_ALREADY_IN_BATTLE] = (char*)"SERVER_RESPONSE_YOURE_ALREADY_IN_BATTLE";
     server_message_s[SERVER_RESPONSE_NOBODY_INVITE_YOU] = (char*)"SERVER_RESPONSE_NOBODY_INVITE_YOU";
+    server_message_s[SERVER_MESSAGE] = (char*)"SERVER_MESSAGE";
+    server_message_s[SERVER_STATUS_QUIT] = (char*)"SERVER_STATUS_QUIT";
+    server_message_s[SERVER_STATUS_FATAL] = (char*)"SERVER_STATUS_FATAL";
     server_message_s[SERVER_MESSAGE_DELIM] = (char*)"SERVER_MESSAGE_DELIM";
     server_message_s[SERVER_MESSAGE_FRIEND_LOGIN] = (char*)"SERVER_MESSAGE_FRIEND_LOGIN";
     server_message_s[SERVER_MESSAGE_FRIEND_LOGOUT] = (char*)"SERVER_MESSAGE_FRIEND_LOGOUT";
@@ -1646,12 +1652,13 @@ void init_local_constants() {
     server_message_s[SERVER_MESSAGE_USER_QUIT_BATTLE] = (char*)"SERVER_MESSAGE_USER_QUIT_BATTLE";
     server_message_s[SERVER_MESSAGE_BATTLE_DISBANDED] = (char*)"SERVER_MESSAGE_BATTLE_DISBANDED";
     server_message_s[SERVER_MESSAGE_BATTLE_INFORMATION] = (char*)"SERVER_MESSAGE_BATTLE_INFORMATION";
-    server_message_s[SERVER_MESSAGE_YOUR_MAGAZINE_IS_EMPTY] = (char*)"SERVER_MESSAGE_YOUR_MAGAZINE_IS_EMPTY";
+    server_message_s[SERVER_MESSAGE_BATTLE_PLAYER] = (char*)"SERVER_MESSAGE_BATTLE_PLAYER";
     server_message_s[SERVER_MESSAGE_YOU_ARE_DEAD] = (char*)"SERVER_MESSAGE_YOU_ARE_DEAD";
     server_message_s[SERVER_MESSAGE_YOU_ARE_SHOOTED] = (char*)"SERVER_MESSAGE_YOU_ARE_SHOOTED";
     server_message_s[SERVER_MESSAGE_YOU_ARE_TRAPPED_IN_MAGMA] = (char*)"SERVER_MESSAGE_YOU_ARE_TRAPPED_IN_MAGMA";
     server_message_s[SERVER_MESSAGE_YOU_GOT_BLOOD_VIAL] = (char*)"SERVER_MESSAGE_YOU_GOT_BLOOD_VIAL";
-    server_message_s[SERVER_STATUS_QUIT] = (char*)"SERVER_STATUS_QUIT";
+    server_message_s[SERVER_MESSAGE_YOU_GOT_MAGAZINE] = (char*)"SERVER_MESSAGE_YOU_GOT_MAGAZINE";
+    server_message_s[SERVER_MESSAGE_YOUR_MAGAZINE_IS_EMPTY] = (char*)"SERVER_MESSAGE_YOUR_MAGAZINE_IS_EMPTY";
 
     recv_msg_func[SERVER_RESPONSE_REGISTER_SUCCESS] = serv_response_register_success;
     recv_msg_func[SERVER_RESPONSE_REGISTER_FAIL] = serv_response_register_fail;

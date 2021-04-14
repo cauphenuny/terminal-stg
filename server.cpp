@@ -356,7 +356,7 @@ void inform_friends(int uid, int message) {
     }
 }
 
-void forced_generate_items(int bid, int x, int y, int kind, int count) {
+void forced_generate_items(int bid, int x, int y, int kind, int count, int uid = -1) {
     //if (battles[bid].num_of_other >= MAX_OTHER) return;
     if (x < 0 || x >= BATTLE_W) return;
     if (y < 0 || y >= BATTLE_H) return;
@@ -367,6 +367,10 @@ void forced_generate_items(int bid, int x, int y, int kind, int count) {
     new_item.pos.x = x;
     new_item.pos.y = y;
     new_item.time = battles[bid].global_time + count;
+    new_item.owner = uid;
+    if (kind == ITEM_MAGMA) {
+        new_item.count = MAGMA_INIT_TIMES;
+    }
     battles[bid].items.push_back(new_item);
     log("new %s #%d (%d,%d)",
         item_s[new_item.kind],
@@ -495,7 +499,7 @@ void check_user_status(int uid) {
                 }
                 case ITEM_MAGMA: {
                     battles[bid].users[uid].life = max(battles[bid].users[uid].life - 1, 0);
-                    battles[bid].users[uid].killby = -1;
+                    battles[bid].users[uid].killby = it->owner;
                     it->count--;
                     log("user #%d %s\033[2m(%s)\033[0m is trapped in magma", uid, sessions[uid].user_name, sessions[uid].ip_addr);
                     send_to_client(uid, SERVER_MESSAGE_YOU_ARE_TRAPPED_IN_MAGMA);
@@ -535,11 +539,11 @@ void check_user_status(int uid) {
                 case ITEM_LANDMINE: {
 					if (it->owner != uid) {
 						it->time = battles[bid].global_time;
-						forced_generate_items(bid, ix, iy, ITEM_MAGMA, 7);
-						forced_generate_items(bid, ix - 1, iy, ITEM_MAGMA, 7);
-						forced_generate_items(bid, ix + 1, iy, ITEM_MAGMA, 7);
-						forced_generate_items(bid, ix, iy - 1, ITEM_MAGMA, 7);
-						forced_generate_items(bid, ix, iy + 1, ITEM_MAGMA, 7);
+						forced_generate_items(bid, ix, iy, ITEM_MAGMA, 7, it->owner);
+						forced_generate_items(bid, ix - 1, iy, ITEM_MAGMA, 7, it->owner);
+						forced_generate_items(bid, ix + 1, iy, ITEM_MAGMA, 7, it->owner);
+						forced_generate_items(bid, ix, iy - 1, ITEM_MAGMA, 7, it->owner);
+						forced_generate_items(bid, ix, iy + 1, ITEM_MAGMA, 7, it->owner);
 					}
                     break;
                 }
@@ -1222,7 +1226,7 @@ int client_command_put_landmine(int uid) {
     int y = battles[bid].users[uid].pos.y;
     if (x < 0 || x >= BATTLE_W) return 1;
     if (y < 0 || y >= BATTLE_H) return 1;
-    log("user #%d %s\033[2m(%s)\033[0m put landmine", uid, sessions[uid].user_name, sessions[uid].ip_addr);
+    log("user #%d %s\033[2m(%s)\033[0m put it at (%d, %d)", uid, sessions[uid].user_name, sessions[uid].ip_addr, x, y);
     item_t new_item;
     new_item.id = ++battles[bid].item_count;
     new_item.kind = ITEM_LANDMINE;
@@ -1352,6 +1356,23 @@ int client_command_fire_aoe_right(int uid) {
     return client_command_fire_aoe(uid, DIR_RIGHT);
 }
 
+int client_command_melee(int uid) {
+    int bid = sessions[uid].bid;
+    int dir = battles[bid].users[uid].dir;
+    int x = battles[bid].users[uid].pos.x;
+    int y = battles[bid].users[uid].pos.y;
+    log("user #%d %s\033[2m(%s)\033[0m melee %s", uid, sessions[uid].user_name, sessions[uid].ip_addr, dir_s[dir]);
+    for (int i = 1; i <= 3; i++) {
+        forced_generate_items(bid, 
+                              x + dir_offset[dir].x * i,
+                              y + dir_offset[dir].y * i,
+                              ITEM_MAGMA,
+                              3,
+                              uid);
+    }
+    return 0;
+}
+
 int admin_set_admin(int argc, char** argv) {
     if (argc < 3) return -1;
     int uid = find_uid_by_user_name(argv[1]), status = atoi(argv[2]);
@@ -1406,6 +1427,21 @@ int admin_set_hp(int argc, char** argv) {
     return 0;
 }
 
+int admin_set_pos(int argc, char** argv) {
+    if (argc < 4) return -1;
+    int uid = find_uid_by_user_name(argv[1]);
+    uint8_t x = atoi(argv[2]), y = atoi(argv[3]);
+    if (uid < 0 || uid >= USER_CNT || sessions[uid].conn < 0) {
+        return -1;
+    }
+    if (x < 0 || x >= BATTLE_W) return -1;
+    if (y < 0 || y >= BATTLE_H) return -1;
+    log("admin set user #%d %s's pos to (%d, %d)", uid, sessions[uid].user_name, x, y);
+    battles[sessions[uid].bid].users[uid].pos.x = x;
+    battles[sessions[uid].bid].users[uid].pos.y = y;
+    return 0;
+}
+
 int admin_ban_user(int argc, char** argv) {
     if (argc < 2) return -1;
     int uid = find_uid_by_user_name(argv[1]);
@@ -1438,6 +1474,7 @@ static struct {
     {"energy", admin_set_energy},
     {"hp", admin_set_hp},
     {"setadmin", admin_set_admin},
+    {"pos", admin_set_pos},
 };
 
 #define NR_HANDLER ((int)sizeof(admin_handler) / (int)sizeof(admin_handler[0]))
@@ -1518,6 +1555,8 @@ void init_handler() {
     handler[CLIENT_COMMAND_MOVE_RIGHT] = client_command_move_right,
 
     handler[CLIENT_COMMAND_PUT_LANDMINE] = client_command_put_landmine,
+    
+    handler[CLIENT_COMMAND_MELEE] = client_command_melee,
 
     handler[CLIENT_COMMAND_FIRE_UP] = client_command_fire_up,
     handler[CLIENT_COMMAND_FIRE_DOWN] = client_command_fire_down,

@@ -110,6 +110,19 @@ char* item_s[128];
 char* dir_s[128];
 int item_to_map[128];
 int color_s_size;
+struct point_t {
+    int x, y;
+};
+point_t dir_offset[] = {
+    [DIR_UP] = {0, -1},
+    [DIR_DOWN] = {0, 1},
+    [DIR_LEFT] = {-1, 0},
+    [DIR_RIGHT] = {1, 0},
+    [DIR_UP_LEFT] = {-1, -1},
+    [DIR_UP_RIGHT] = {1, -1},
+    [DIR_DOWN_LEFT] = {-1, 1},
+    [DIR_DOWN_RIGHT] = {1, 1},
+};
 
 void init_constants() {
     item_s[ITEM_NONE] = (char*)"none";
