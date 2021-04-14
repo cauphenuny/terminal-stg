@@ -525,6 +525,12 @@ char* readline() {
             //    assert('A' <= ch && ch <= 'D');
             //    break;
             //}
+            case 0x15: {
+                while (line_ptr) {
+                    READLINE_BACKSPACE;
+                }
+                break;
+            }
             case 0x7f:
             case 0x08: {
                 if (line_ptr == 0) break;
@@ -724,13 +730,19 @@ int cmd_help(char* args) {
         } else if (strcmp(args, "fuck") == 0) {
             bottom_bar_output(0, "forced stop ALL client and server");
         } else if (strcmp(args, "admin") == 0) {
-            bottom_bar_output(0, "control client info (need args: <ban, energy, life>)");
+            bottom_bar_output(0, "control client info (need args: <ban, energy(eng), hp, pos>)");
         } else if (strcmp(args, "admin ban") == 0) {
-            bottom_bar_output(0, "ban user by uid (need args)");
+            bottom_bar_output(0, "ban user by name (need args)");
         } else if (strcmp(args, "admin energy") == 0) {
-            bottom_bar_output(0, "reset user energy by uid (need 2 args)");
-        } else if (strcmp(args, "admin life") == 0) {
-            bottom_bar_output(0, "reset user life by uid (need 2 args)");
+            bottom_bar_output(0, "reset user energy by name (need 2 args)");
+        } else if (strcmp(args, "admin eng") == 0) {
+            bottom_bar_output(0, "reset user energy by name (need 2 args)");
+        } else if (strcmp(args, "admin hp") == 0) {
+            bottom_bar_output(0, "reset user hp by name (need 2 args)");
+        } else if (strcmp(args, "admin pos") == 0) {
+            bottom_bar_output(0, "reset user pos by name (need 3 args)");
+        } else if (strcmp(args, "admin setadmin") == 0) {
+            bottom_bar_output(0, "reset user attribute(admin or not) by name (need 2 args)");
         } else {
             bottom_bar_output(0, "no help for '%s'", args);
         }

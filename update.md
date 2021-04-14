@@ -1,4 +1,8 @@
 -----
+**v2.8.1**
+- add `^U` to delete whole line.
+
+-----
 **v2.8.0**
 - add ` `(space) for melee.
 
