@@ -108,6 +108,7 @@ class item_t { public:
 class battle_t { public:
     int is_alloced;
     size_t alive_users;
+    size_t all_users;
     class user_t { public:
         int battle_state;
         int energy;
@@ -125,7 +126,7 @@ class battle_t { public:
     std::list<item_t> items;
 
     void reset() {
-        is_alloced = alive_users = num_of_other = item_count = 0;
+        is_alloced = all_users = alive_users = num_of_other = item_count = 0;
         global_time = 0;
         items.clear();
     }
@@ -205,7 +206,8 @@ void inform_all_user_battle_player(int bid);
 void user_quit_battle(uint32_t bid, uint32_t uid) {
     assert(bid < USER_CNT && uid < USER_CNT);
 
-    log("user %s\033[2m(%s)\033[0m quit from battle %d(%ld users)", sessions[uid].user_name, sessions[uid].ip_addr, bid, battles[bid].alive_users);
+    log("user %s\033[2m(%s)\033[0m quit from battle %d(%ld/%ld users)", sessions[uid].user_name, sessions[uid].ip_addr, bid, battles[bid].alive_users, battles[bid].all_users);
+    battles[bid].all_users--;
     if (battles[bid].users[uid].battle_state == BATTLE_STATE_LIVE) {
         battles[bid].alive_users--;
         if (battles[bid].alive_users != 0) {
@@ -215,7 +217,7 @@ void user_quit_battle(uint32_t bid, uint32_t uid) {
     }
     battles[bid].users[uid].battle_state = BATTLE_STATE_UNJOINED;
     sessions[uid].state = USER_STATE_LOGIN;
-    if (battles[bid].alive_users == 0) {
+    if (battles[bid].all_users == 0) {
         // disband battle
         log("disband battle %d", bid);
         battles[bid].reset();
@@ -233,13 +235,12 @@ void user_quit_battle(uint32_t bid, uint32_t uid) {
 }
 
 void user_join_battle_common_part(uint32_t bid, uint32_t uid, uint32_t joined_state) {
-    assert(bid < USER_CNT && uid < USER_CNT);
-
     log("user %s\033[2m(%s)\033[0m join in battle %d", sessions[uid].user_name, sessions[uid].ip_addr, bid);
 
     if (joined_state == USER_STATE_BATTLE) {
+        battles[bid].all_users++;
         battles[bid].alive_users++;
-        log("now %ld alive users", battles[bid].alive_users);
+        log("now %ld alive of %ld users", battles[bid].alive_users, battles[bid].all_users);
         battles[bid].users[uid].battle_state = BATTLE_STATE_LIVE;
     } else if (joined_state == USER_STATE_WAIT_TO_BATTLE) {
         battles[bid].users[uid].battle_state = BATTLE_STATE_UNJOINED;
@@ -498,16 +499,18 @@ void check_user_status(int uid) {
                     break;
                 }
                 case ITEM_MAGMA: {
-                    battles[bid].users[uid].life = max(battles[bid].users[uid].life - 1, 0);
-                    battles[bid].users[uid].killby = it->owner;
-                    it->count--;
-                    log("user #%d %s\033[2m(%s)\033[0m is trapped in magma", uid, sessions[uid].user_name, sessions[uid].ip_addr);
-                    send_to_client(uid, SERVER_MESSAGE_YOU_ARE_TRAPPED_IN_MAGMA);
-                    if (it->count <= 0) {
-                        log("magma %d is exhausted", it->id);
-                        battles[bid].num_of_other--;
-                        it = items.erase(it);
-                        //log("current item size: %ld", items.size());
+                    if (it->owner != uid) {
+                        battles[bid].users[uid].life = max(battles[bid].users[uid].life - 1, 0);
+                        battles[bid].users[uid].killby = it->owner;
+                        it->count--;
+                        log("user #%d %s\033[2m(%s)\033[0m is trapped in magma", uid, sessions[uid].user_name, sessions[uid].ip_addr);
+                        send_to_client(uid, SERVER_MESSAGE_YOU_ARE_TRAPPED_IN_MAGMA);
+                        if (it->count <= 0) {
+                            log("magma %d is exhausted", it->id);
+                            battles[bid].num_of_other--;
+                            it = items.erase(it);
+                            //log("current item size: %ld", items.size());
+                        }
                     }
                     break;
                 }
@@ -1226,7 +1229,7 @@ int client_command_put_landmine(int uid) {
     int y = battles[bid].users[uid].pos.y;
     if (x < 0 || x >= BATTLE_W) return 1;
     if (y < 0 || y >= BATTLE_H) return 1;
-    log("user #%d %s\033[2m(%s)\033[0m put it at (%d, %d)", uid, sessions[uid].user_name, sessions[uid].ip_addr, x, y);
+    log("user #%d %s\033[2m(%s)\033[0m put at (%d, %d)", uid, sessions[uid].user_name, sessions[uid].ip_addr, x, y);
     item_t new_item;
     new_item.id = ++battles[bid].item_count;
     new_item.kind = ITEM_LANDMINE;
@@ -1358,6 +1361,7 @@ int client_command_fire_aoe_right(int uid) {
 
 int client_command_melee(int uid) {
     int bid = sessions[uid].bid;
+    if (battles[bid].users[uid].life <= 0) return 0;
     int dir = battles[bid].users[uid].dir;
     int x = battles[bid].users[uid].pos.x;
     int y = battles[bid].users[uid].pos.y;

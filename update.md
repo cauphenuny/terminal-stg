@@ -4,7 +4,7 @@
 
 -----
 **v2.8.0**
-- add ` `(space) for melee.
+- add `(space)` for melee.
 
 -----
 **v2.7.4**
@@ -12,7 +12,7 @@
   usage: `admin pos <username> <new x> <new y>`
 
 -----
-**v2.7.2**
+**v2.7.2 [released]**
 - add admin command `hp` (set user hp by name)  
   usage: `admin hp <username> <new hp>`
 
@@ -118,6 +118,10 @@
 --------------
 **v1.2.0**  
 - make client quit when server quit.  
+
+--------------
+**v1.1.4**
+- client can search port range.
   
 -------------
 **v1.1.0**  
