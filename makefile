@@ -1,12 +1,17 @@
-.PHONY:run-client run-server clean tmp
+CXX = g++
+CXXFLAGS = -Wall -std=c++11 -g
+CPPFLAGS = 
+LDFLAGS = -pthread
+
+.PHONY:run-client run-server clean
 
 all:server client
 
 server:server.cpp common.h func.h constants.h server.h makefile
-	g++ -Wall -std=c++11 -O3 server.cpp -o server -pthread -ggdb
+	$(CXX) $(CXXFLAGS)$(CPPFLAGS) server.cpp -o server $(LDFLAGS) -O3
 
 client:client.cpp common.h func.h constants.h makefile
-	g++ -Wall -std=c++11 client.cpp -o client -pthread -ggdb
+	$(CXX) $(CXXFLAGS)$(CPPFLAGS) client.cpp -o client $(LDFLAGS)
 
 clean:
 	rm server client
@@ -16,7 +21,3 @@ run-server:server client
 
 run-client:server client
 	./client
-
-tmp:
-	echo $(CFILES)
-	echo $(filter,./front/front-main.c,$(CFILES))

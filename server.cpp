@@ -623,7 +623,7 @@ void clear_items(int bid) {
               cur != items.end();
               cur = next) {
         next = std::next(cur);
-        if (cur->time < battles[bid].global_time) {
+        if (cur->time <= battles[bid].global_time) {
             if (cur->kind < ITEM_END) {
                 battles[bid].num_of_other--;
             }
