@@ -506,7 +506,7 @@ void check_user_status(int uid) {
                         log("user #%d %s\033[2m(%s)\033[0m is trapped in magma", uid, sessions[uid].user_name, sessions[uid].ip_addr);
                         send_to_client(uid, SERVER_MESSAGE_YOU_ARE_TRAPPED_IN_MAGMA);
                         if (it->count <= 0) {
-                            log("magma %d is exhausted", it->id);
+                            log("magma #%d is exhausted", it->id);
                             battles[bid].num_of_other--;
                             it = items.erase(it);
                             //log("current item size: %ld", items.size());
