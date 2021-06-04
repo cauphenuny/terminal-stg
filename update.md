@@ -128,4 +128,4 @@
 - fix Ctrl-C bug, add server can save userlist.  
   
 --------------------------------------------------
-author: ycpedef 
+author: [Starseekist](https://github.com/starseekist)

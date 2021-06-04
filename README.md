@@ -1,13 +1,11 @@
 * recently update  
-  see **update.md**
+  see **[update.md](https://github.com/starseekist/socket-shooter-game/blob/master/update.md)**
 
 * download  
-  **[releases](https://github.com/ycpedef/socket-stg/releases/)** or  
+  **[releases](https://github.com/starseekist/socket-shooter-game/releases/)** or  
   ```shell
-  git clone https://github.com/ycpedef/socket-stg --depth=1
-  # or
-  # git clone https://gitee.com/yuanchenpu/socket-stg --depth=1
-  cd socket-stg
+  git clone https://github.com/ycpedef/socket-shooter-game --depth=1
+  cd socket-shooter-game
   ```
 * install (just input `make` in your terminal)  
   ```shell
