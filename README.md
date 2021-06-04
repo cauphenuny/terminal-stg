@@ -4,7 +4,7 @@
 * download  
   **[releases](https://github.com/starseekist/socket-shooter-game/releases/)** or  
   ```shell
-  git clone https://github.com/ycpedef/socket-shooter-game --depth=1
+  git clone https://github.com/starseekist/socket-shooter-game --depth=1
   cd socket-shooter-game
   ```
 * install (just input `make` in your terminal)  
