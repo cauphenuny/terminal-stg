@@ -1,3 +1,7 @@
+----
+**v2.8.4**
+- set key `z` to put landmine.
+
 -----
 **v2.8.1**
 - add `^U` to delete whole line.
