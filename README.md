@@ -57,7 +57,9 @@
   |      o      | landmine  |
   |      .      |  bullet   |
 
-  Notice that the bullet will have the same color with you when it belongs to you, otherwise it will be white.
+  note:
+  - the bullet will have the same color with you when it belongs to you, otherwise it will be white.
+  - you can't see other player's landmine.
 
 ####  5. operations in battle
 
