@@ -945,7 +945,7 @@ void run_battle() {
             case 'J': send_command(CLIENT_COMMAND_FIRE_AOE_DOWN); break;
             case 'H': send_command(CLIENT_COMMAND_FIRE_AOE_LEFT); break;
             case 'L': send_command(CLIENT_COMMAND_FIRE_AOE_RIGHT); break;
-            case '1': send_command(CLIENT_COMMAND_PUT_LANDMINE); break;
+            case 'z': send_command(CLIENT_COMMAND_PUT_LANDMINE); break;
             case ' ': send_command(CLIENT_COMMAND_MELEE); break;
         }
     }

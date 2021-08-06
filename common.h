@@ -4,7 +4,7 @@
 #pragma GCC diagnostic ignored "-Wstringop-truncation"
 #pragma GCC diagnostic ignored "-Wunused-result"
 
-const char* version = (char*)"v2.8.4";
+const char* version = (char*)"v2.8.5";
 
 #include <cstdio>
 #include <cstdlib>
