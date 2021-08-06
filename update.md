@@ -130,6 +130,3 @@
 -------------
 **v1.1.0**  
 - fix Ctrl-C bug, add server can save userlist.  
-  
---------------------------------------------------
-author: [Starseekist](https://github.com/starseekist)
