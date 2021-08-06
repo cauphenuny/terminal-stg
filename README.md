@@ -55,14 +55,19 @@
   |      +      |  magazine |
   |      *      | blood vial|
   |      o      | landmine  |
+  |      .      |  bullet   |
+
+  Notice that the bullet will have the same color with you when it belongs to you, otherwise it will be white.
 
 ####  5. operations in battle
 
   * use `w` `s` `a` `d` for moving around
-  * fire (8 directions, and h-j-k-l is same to vim):
-    `y`   `k`   `o`
-    `h`          `l`
-    `n`   `j`   `.`
+  * fire (8 directions, and h-j-k-l is same to vim):  
+    ```
+    y k o
+    h   l
+    n j .  
+    ```
   * use `K` `J` `H` `L` for fire multiple bullets.
   * use `z` for putting landmine
   * use `(space)` for close attack
