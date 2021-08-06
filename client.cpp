@@ -730,7 +730,7 @@ int cmd_help(char* args) {
         } else if (strcmp(args, "fuck") == 0) {
             bottom_bar_output(0, "forced stop ALL client and server");
         } else if (strcmp(args, "admin") == 0) {
-            bottom_bar_output(0, "control client info (need args: <ban, energy(eng), hp, pos>)");
+            bottom_bar_output(0, "control client info (need args: <ban, energy(eng), hp, pos, setadmin>)");
         } else if (strcmp(args, "admin ban") == 0) {
             bottom_bar_output(0, "ban user by name (need args)");
         } else if (strcmp(args, "admin energy") == 0) {

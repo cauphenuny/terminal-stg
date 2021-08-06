@@ -42,6 +42,7 @@
     |energy|set user energy|`admin energy bob 100`|
     |hp| set player hp | `admin hp cindy 100`|
     |pos| set player position | `admin pos bob 1 1`|
+    |setadmin|change player authority (1: admin, 0: not admin)| `admin setadmin cindy 1`|
 ####  3. quit
 
   press `Ctrl-C` or input `quit` in command mode to quit.
