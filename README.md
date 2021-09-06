@@ -2,7 +2,7 @@
 
 Multi-player shooting game in linux terminal.
 
-forked from [wierton/socket-based-naive-game](https://github.com/wierton/socket-based-naive-game).
+v1.0.0 is based on [wierton/socket-based-naive-game](https://github.com/wierton/socket-based-naive-game).
 
 ## Download and Install 
   ```shell
