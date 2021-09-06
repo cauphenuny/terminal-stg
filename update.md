@@ -130,3 +130,8 @@
 -------------
 **v1.1.0**  
 - fix Ctrl-C bug, add server can save userlist.  
+
+
+-------------
+**v1.0.0**
+- <https://github.com/wierton/socket-based-naive-game>
