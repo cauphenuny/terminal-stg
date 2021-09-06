@@ -24,7 +24,7 @@ v1.0.0 is based on [wierton/socket-based-naive-game](https://github.com/wierton/
 
   Use `w` `s` `a` `d` `j` `k` to switch selected button.
 
-  You can choose free-for-all mode or private mode. You can invite other users to your current room.
+  You can choose free-for-all mode or private mode. You can invite other players to your current room.
 
 ### 2. commands 
 
@@ -46,7 +46,7 @@ v1.0.0 is based on [wierton/socket-based-naive-game](https://github.com/wierton/
     | name | meaning | example|
     |:----:|:-------:|:------:|
     |ban|kill a player| `admin ban alice`|
-    |energy|set user energy|`admin energy bob 100`|
+    |energy|set player energy|`admin energy bob 100`|
     |hp| set player hp | `admin hp cindy 100`|
     |pos| set player position | `admin pos bob 1 1`|
     |setadmin|change player authority (1: admin, 0: not admin)| `admin setadmin cindy 1`|

@@ -8,20 +8,20 @@
 
 -----
 **v2.8.0**
-- add `(space)` for melee.
+- add `(space)` for close attack.
 
 -----
 **v2.7.4**
-- add admin command `pos` (set user position by name)  
-  usage: `admin pos <username> <new x> <new y>`
+- add admin command `pos` (set player position by name)  
+  usage: `admin pos <playername> <new x> <new y>`
 
 -----
 **v2.7.2 [released]**
-- add admin command `hp` (set user hp by name)  
-  usage: `admin hp <username> <new hp>`
+- add admin command `hp` (set player hp by name)  
+  usage: `admin hp <playername> <new hp>`
 
-- add admin command `setadmin` (set user to be admin or not)  
-  usage: `admin setadmin <username> <0/1>`
+- add admin command `setadmin` (set player to be admin or not)  
+  usage: `admin setadmin <playername> <0/1>`
 
 -----
 **v2.7.0**
@@ -30,11 +30,11 @@
 -----
 
 **v2.6.0**
-- add admin command `ban` (ban user by name)  
-  usage: `admin ban <username>`
+- add admin command `ban` (ban player by name)  
+  usage: `admin ban <playername>`
 
-- add admin command `energy` (set user energy by name)  
-  usage: `admin energy <username> <new energy>`
+- add admin command `energy` (set player energy by name)  
+  usage: `admin energy <playername> <new energy>`
 
 -----
 **v2.5.9 [released]**
@@ -130,7 +130,6 @@
 -------------
 **v1.1.0**  
 - fix Ctrl-C bug, add server can save userlist.  
-
 
 -------------
 **v1.0.0**
