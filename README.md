@@ -4,6 +4,8 @@ Multi-player shooting game in linux terminal.
 
 v1.0.0 is based on [wierton/socket-based-naive-game](https://github.com/wierton/socket-based-naive-game).
 
+**English** | [Chinese](https://github.com/hydropek/terminal-stg/blob/master/README_CN.md)
+
 ## Download and Install 
   ```shell
   git clone https://github.com/hydropek/terminal-stg --depth=1
